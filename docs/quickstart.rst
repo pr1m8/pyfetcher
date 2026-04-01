@@ -99,3 +99,17 @@ Rate-Limited Fetching
    )
    service = FetchService(rate_limiter=limiter)
    response = service.fetch(FetchRequest(url="https://example.com"))
+
+MCP Server
+----------
+
+Run fetchkit as an MCP server for AI agents:
+
+.. code-block:: bash
+
+   pip install 'fetchkit[mcp]'
+   pyfetcher-mcp              # stdio for Claude Desktop
+   pyfetcher-mcp --http 8000  # HTTP for LangChain
+
+All fetch, scrape, and extraction tools become available to AI agents
+as structured MCP tools.

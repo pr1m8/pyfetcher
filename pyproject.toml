@@ -1,6 +1,6 @@
 [project]
 name = "fetchkit"
-version = "0.2.0"
+version = "0.3.0"
 description = "Advanced web fetching, scraping, and content acquisition toolkit with crawl-scrape-download pipeline"
 authors = [{ name = "Will", email = "you@example.com" }]
 dependencies = [
