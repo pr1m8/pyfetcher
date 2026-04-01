@@ -10,7 +10,7 @@ pyfetcher is an advanced web fetching and scraping toolkit for Python 3.13+. It 
 src/pyfetcher/
 ├── contracts/     # Pydantic models: URL, FetchRequest, FetchResponse, policies
 ├── headers/       # Browser header generation: profiles, UA rotation, static providers
-├── transports/    # HTTP backends: httpx (sync+async), aiohttp (async)
+├── transports/    # HTTP backends: httpx, aiohttp, curl_cffi, cloudscraper
 ├── retry/         # Tenacity-based retry with exponential backoff
 ├── ratelimit/     # Per-domain + global rate limiting with token buckets
 ├── fetch/         # Orchestration: FetchService, function API, batch, stream
@@ -53,6 +53,7 @@ pytest tests/ --cov=pyfetcher       # With coverage
 - Tests use **pytest** with **pytest-asyncio** (auto mode)
 - Fixtures are in `tests/conftest.py`
 - Unit tests cover: contracts, headers, scrape, metadata, retry, ratelimit, stream/batch
+- Integration tests cover: FetchService with mocked httpx, CLI commands, download service
 
 ### Linting & Formatting
 
@@ -78,11 +79,21 @@ Trunk configuration is in `.trunk/trunk.yaml`. Active linters: ruff, black, isor
 - **`# nosec B311`**: Used for intentional `random.choice` in header randomization (not security-sensitive)
 - **Frozen models**: All Pydantic models are frozen (immutable) - use `model_copy(update={...})` to create modified copies
 - **Async-first**: Most operations support both sync and async; async is the primary pattern
+- **Lazy transport init**: curl_cffi and cloudscraper transports are created on first use in FetchService, so their deps remain optional
 
 ## CLI Entry Points
 
 - `pyfetcher` - Main CLI (defined in `pyfetcher.cli.app:main`)
 - `pyfetcher-tui` - Interactive TUI (defined in `pyfetcher.tui.app:run_tui`)
+
+## Transport Backends
+
+| Backend      | Sync | Async | Stream | TLS Fingerprint | CF Bypass |
+| ------------ | ---- | ----- | ------ | --------------- | --------- |
+| httpx        | Y    | Y     | Y      | N               | N         |
+| aiohttp      | N    | Y     | Y      | N               | N         |
+| curl_cffi    | Y    | Y     | Y      | Y               | N         |
+| cloudscraper | Y    | N     | N      | N               | Y         |
 
 ## Browser Profiles
 

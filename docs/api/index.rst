@@ -7,6 +7,8 @@ API Reference
    contracts
    headers
    fetch
+   transports
    scrape
    metadata
+   download
    ratelimit

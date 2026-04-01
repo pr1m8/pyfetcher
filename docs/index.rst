@@ -11,6 +11,7 @@ Advanced web fetching and scraping toolkit for Python.
    headers
    scraping
    cli
+   tui
    api/index
 
 Indices and tables

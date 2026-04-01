@@ -55,6 +55,29 @@ Async fetch:
 
    asyncio.run(main())
 
+Optional Backends
+-----------------
+
+curl_cffi (TLS fingerprint impersonation):
+
+.. code-block:: bash
+
+   pip install 'pyfetcher[curl]'
+
+.. code-block:: python
+
+   response = fetch(FetchRequest(url="https://example.com", backend="curl_cffi"))
+
+cloudscraper (Cloudflare bypass):
+
+.. code-block:: bash
+
+   pip install 'pyfetcher[cloudscraper]'
+
+.. code-block:: python
+
+   response = fetch(FetchRequest(url="https://protected-site.com", backend="cloudscraper"))
+
 Rate-Limited Fetching
 ---------------------
 
