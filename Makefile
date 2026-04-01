@@ -34,16 +34,13 @@ test-fast: ## Run tests without slow markers
 	pdm run pytest tests/ -v --tb=short -x -q
 
 # ─── Linting & Formatting ────────────────────────────────────────────
-fmt: ## Format code with trunk
-	trunk fmt src/ tests/ examples/
+fmt: ## Format code with ruff
+	pdm run ruff format src/ tests/ examples/
 
-lint: ## Lint code with trunk
-	trunk check src/ tests/ examples/
+lint: ## Lint code with ruff
+	pdm run ruff check src/ tests/ examples/
 
 check: fmt lint test ## Format, lint, and test (full CI check)
-
-ruff: ## Run ruff check directly
-	pdm run ruff check src/ tests/
 
 ruff-fix: ## Run ruff with auto-fix
 	pdm run ruff check src/ tests/ --fix

@@ -76,10 +76,12 @@ __all__ = [
 ]
 
 try:
-    from pyfetcher.fetch.functions import afetch  # noqa: F401
-    from pyfetcher.fetch.functions import afetch_many  # noqa: F401
-    from pyfetcher.fetch.functions import astream  # noqa: F401
-    from pyfetcher.fetch.functions import fetch  # noqa: F401
+    from pyfetcher.fetch.functions import (
+        afetch,  # noqa: F401
+        afetch_many,  # noqa: F401
+        astream,  # noqa: F401
+        fetch,  # noqa: F401
+    )
     from pyfetcher.fetch.service import FetchService  # noqa: F401
 except Exception:  # pragma: no cover - optional dependency guard  # nosec B110
     pass
@@ -110,8 +112,10 @@ else:
     )
 
 try:
-    from pyfetcher.ratelimit.limiter import DomainRateLimiter  # noqa: F401
-    from pyfetcher.ratelimit.limiter import RateLimitPolicy  # noqa: F401
+    from pyfetcher.ratelimit.limiter import (
+        DomainRateLimiter,  # noqa: F401
+        RateLimitPolicy,  # noqa: F401
+    )
 except Exception:  # pragma: no cover  # nosec B110
     pass
 else:

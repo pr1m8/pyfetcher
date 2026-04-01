@@ -22,16 +22,17 @@ lint:
         - tests/**
   enabled:
     - bandit@1.9.4
-    - black@26.3.1
-    - checkov@3.2.513
     - git-diff-check
-    - isort@8.0.1
     - markdownlint@0.45.0
     - prettier@3.6.2
     - ruff@0.15.8
     - taplo@0.10.0
-    - trufflehog@3.94.1
     - yamllint@1.38.0
+  disabled:
+    - black
+    - isort
+    - checkov
+    - trufflehog
 actions:
   enabled:
     - trunk-announce

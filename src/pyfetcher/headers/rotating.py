@@ -104,9 +104,7 @@ class RotatingHeaderProvider:
         """
         profile = self._select_profile()
         headers = profile.to_headers()
-        headers["accept-language"] = random.choice(
-            profile.accept_language_options
-        )  # noqa: S311  # nosec B311
+        headers["accept-language"] = random.choice(profile.accept_language_options)  # noqa: S311  # nosec B311
         if profile.browser in ("chrome", "edge"):
             headers["sec-ch-prefers-color-scheme"] = random.choice(  # noqa: S311  # nosec B311
                 ["light", "dark", "no-preference"]

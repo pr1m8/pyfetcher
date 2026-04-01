@@ -88,9 +88,7 @@ def get_best_browser_headers(impersonate: str = "chrome_win") -> dict[str, str]:
     """
     profile = _resolve_profile(impersonate)
     headers = profile.to_headers()
-    headers["accept-language"] = random.choice(
-        profile.accept_language_options
-    )  # noqa: S311  # nosec B311
+    headers["accept-language"] = random.choice(profile.accept_language_options)  # noqa: S311  # nosec B311
     if profile.browser in ("chrome", "edge"):
         headers["sec-ch-prefers-color-scheme"] = random.choice(  # noqa: S311  # nosec B311
             ["light", "dark", "no-preference"]

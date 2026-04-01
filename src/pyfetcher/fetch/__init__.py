@@ -17,10 +17,12 @@ from __future__ import annotations
 __all__: list[str] = []
 
 try:
-    from pyfetcher.fetch.functions import afetch  # noqa: F401
-    from pyfetcher.fetch.functions import afetch_many  # noqa: F401
-    from pyfetcher.fetch.functions import astream  # noqa: F401
-    from pyfetcher.fetch.functions import fetch  # noqa: F401
+    from pyfetcher.fetch.functions import (
+        afetch,  # noqa: F401
+        afetch_many,  # noqa: F401
+        astream,  # noqa: F401
+        fetch,  # noqa: F401
+    )
     from pyfetcher.fetch.service import FetchService  # noqa: F401
 except Exception:  # pragma: no cover - optional dependency guard  # nosec B110
     pass

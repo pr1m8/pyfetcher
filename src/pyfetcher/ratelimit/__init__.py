@@ -15,8 +15,10 @@ from __future__ import annotations
 __all__: list[str] = []
 
 try:
-    from pyfetcher.ratelimit.limiter import DomainRateLimiter  # noqa: F401
-    from pyfetcher.ratelimit.limiter import RateLimitPolicy  # noqa: F401
+    from pyfetcher.ratelimit.limiter import (
+        DomainRateLimiter,  # noqa: F401
+        RateLimitPolicy,  # noqa: F401
+    )
 except Exception:  # pragma: no cover - optional dependency guard  # noqa: S110  # nosec B110
     pass  # nosec B110
 else:

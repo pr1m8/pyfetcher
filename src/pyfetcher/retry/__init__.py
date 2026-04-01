@@ -15,9 +15,11 @@ from __future__ import annotations
 __all__: list[str] = []
 
 try:
-    from pyfetcher.retry.tenacity import RetryableStatusCodeError  # noqa: F401
-    from pyfetcher.retry.tenacity import build_async_retrying  # noqa: F401
-    from pyfetcher.retry.tenacity import build_retrying  # noqa: F401
+    from pyfetcher.retry.tenacity import (
+        RetryableStatusCodeError,  # noqa: F401
+        build_async_retrying,  # noqa: F401
+        build_retrying,  # noqa: F401
+    )
 except Exception:  # pragma: no cover - optional dependency guard  # noqa: S110  # nosec B110
     pass  # nosec B110
 else:
