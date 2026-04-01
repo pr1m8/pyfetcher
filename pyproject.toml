@@ -1,6 +1,6 @@
 [project]
 name = "fetchkit"
-version = "0.2.0"
+version = "0.3.0"
 description = "Advanced web fetching, scraping, and content acquisition toolkit with crawl-scrape-download pipeline"
 authors = [{ name = "Will", email = "you@example.com" }]
 dependencies = [
@@ -65,9 +65,11 @@ observe = [
 ]
 feeds = ["feedparser>=6.0", "dateparser>=1.2"]
 text = ["ftfy>=6.0", "anyascii>=0.3", "tldextract>=5.0", "python-slugify>=8.0"]
+mcp = ["fastmcp>=2.0"]
+langchain = ["langchain-mcp-adapters>=0.1", "langchain-core>=0.3"]
 docs = ["sphinx>=7.0", "furo>=2024.0", "sphinx-autodoc-typehints>=2.0"]
 full = [
-  "fetchkit[tui,metadata,curl,cloudscraper,pipeline,downloaders,extractors,media,browser,observe,feeds,text]",
+  "fetchkit[tui,metadata,curl,cloudscraper,pipeline,downloaders,extractors,media,browser,observe,feeds,text,mcp]",
 ]
 dev = [
   "pytest>=8.0",
@@ -81,6 +83,7 @@ dev = [
 [project.scripts]
 pyfetcher = "pyfetcher.cli.app:main"
 pyfetcher-tui = "pyfetcher.tui.app:run_tui"
+pyfetcher-mcp = "pyfetcher.mcp.__main__:main"
 
 [build-system]
 requires = ["pdm-backend"]

@@ -85,6 +85,16 @@ build: ## Build source and wheel distributions
 publish: build ## Build and publish to PyPI
 	pdm publish
 
+# ─── MCP Server ────────────────────────────────────────────────────────
+mcp: ## Run MCP server (stdio transport)
+	pdm run python -m pyfetcher.mcp
+
+mcp-http: ## Run MCP server (HTTP on port 8000)
+	pdm run python -m pyfetcher.mcp --http 8000
+
+mcp-list: ## List available MCP tools and resources
+	pdm run fastmcp list src/pyfetcher/mcp/server.py
+
 clean: ## Remove build artifacts and caches
 	rm -rf dist/ build/ .pytest_cache/ htmlcov/ .coverage
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

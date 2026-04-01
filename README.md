@@ -330,6 +330,95 @@ async def handle_post(url, response):
     )
 ```
 
+## MCP Server (AI Agent Integration)
+
+fetchkit ships as an **MCP server**, making all its capabilities available to AI agents (Claude, LangChain, LangGraph, and any MCP-compatible client). This turns fetchkit into **autonomous agentic infrastructure** -- LLMs can fetch, scrape, extract, and download without custom code.
+
+### Why MCP?
+
+Traditional scraping requires writing code for every site. With fetchkit's MCP server, an AI agent can:
+
+- **Autonomously research topics** by fetching pages, extracting content, and following links
+- **Audit websites** by checking metadata, robots.txt, sitemaps, and page structure
+- **Extract structured data** from any page using CSS selectors, table parsing, or article extraction
+- **Download media** with progress tracking and checksum verification
+- **Generate realistic requests** using browser profiles that pass bot detection
+
+All 16 tools return **structured Pydantic models** so the LLM gets clean, typed data -- not raw HTML.
+
+### Quick Start
+
+```bash
+pip install 'fetchkit[mcp]'
+
+# Run as stdio server (Claude Desktop / Claude Code)
+pyfetcher-mcp
+
+# Run as HTTP server (LangChain / remote agents)
+pyfetcher-mcp --http 8000
+
+# Or via Makefile
+make mcp          # stdio
+make mcp-http     # HTTP on port 8000
+```
+
+### Available Tools (16)
+
+| Tool                | What it does                                                       |
+| ------------------- | ------------------------------------------------------------------ |
+| `fetch_url`         | Fetch any URL with browser headers, returns status + body + timing |
+| `fetch_multiple`    | Batch fetch with concurrency control                               |
+| `scrape_css`        | Extract content via CSS selectors                                  |
+| `scrape_links`      | Harvest links with internal/external classification                |
+| `scrape_text`       | Extract readable text (strips scripts, nav, etc.)                  |
+| `scrape_metadata`   | Title, description, Open Graph, favicons                           |
+| `scrape_forms`      | Parse forms with fields and default values                         |
+| `scrape_table`      | Extract HTML table data as rows                                    |
+| `check_robots`      | Check robots.txt rules for any path                                |
+| `parse_sitemap`     | Parse XML sitemaps                                                 |
+| `generate_headers`  | Preview full browser header sets                                   |
+| `list_profiles`     | Show all 11 browser profiles                                       |
+| `random_user_agent` | Generate random realistic UAs                                      |
+| `extract_article`   | Article text + markdown via trafilatura                            |
+| `convert_html`      | HTML -> markdown or plaintext                                      |
+| `download_file`     | Download with checksum verification                                |
+
+### Resources & Prompts
+
+Resources expose data for context: `pyfetcher://profiles`, `pyfetcher://backends`, `pyfetcher://version`.
+
+Prompts provide templates: `web_research`, `site_audit`, `scrape_guide`, `compare_pages`.
+
+### Use with LangChain
+
+```python
+from langchain_mcp_adapters import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "pyfetcher": {"transport": "http", "url": "http://localhost:8000/mcp"}
+})
+tools = await client.get_tools()  # 16 LangChain tools ready to use
+
+# Build an agent
+from langgraph.prebuilt import create_react_agent
+agent = create_react_agent(model, tools)
+```
+
+### Use with Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "pyfetcher": {
+      "command": "pyfetcher-mcp",
+      "args": []
+    }
+  }
+}
+```
+
 ## Transport Backends
 
 | Backend      | Sync | Async | Stream | TLS Fingerprint | CF Bypass | Install          |

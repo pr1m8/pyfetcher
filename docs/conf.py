@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath("../src"))
 project = "fetchkit"
 copyright = "2026, Will"
 author = "Will"
-release = "0.2.0"
+release = "0.3.0"
 
 extensions = [
     "sphinx.ext.autodoc",

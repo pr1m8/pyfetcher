@@ -15,6 +15,7 @@ Install: ``pip install fetchkit`` -- import as ``import pyfetcher``
    headers
    scraping
    pipeline
+   mcp
    infrastructure
    cli
    tui
