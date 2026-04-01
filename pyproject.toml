@@ -12,6 +12,7 @@ dependencies = [
   "click>=8.0",
   "rich>=13.0",
   "defusedxml>=0.7",
+  "pydantic-settings>=2.0",
 ]
 requires-python = ">=3.13"
 readme = "README.md"
@@ -32,14 +33,49 @@ tui = ["textual>=0.40"]
 metadata = ["extruct>=0.17", "w3lib>=2.0"]
 curl = ["curl_cffi>=0.7"]
 cloudscraper = ["cloudscraper>=1.2"]
+db = [
+  "sqlalchemy[asyncio]>=2.0",
+  "asyncpg>=0.31",
+  "alembic>=1.14",
+  "pydantic-settings>=2.0",
+]
+store = ["aioboto3>=13.0", "minio>=7.2"]
+pipeline = ["pyfetcher[db,store]"]
+downloaders = ["yt-dlp>=2024.0", "gallery-dl>=1.27"]
+extractors = [
+  "trafilatura>=2.0",
+  "readability-lxml>=0.8",
+  "html2text>=2025.0",
+  "markdownify>=1.0",
+  "newspaper3k>=0.2",
+]
+media = [
+  "mutagen>=1.47",
+  "pymediainfo>=7.0",
+  "exifread>=3.5",
+  "pypdf>=6.0",
+  "Pillow>=12.0",
+  "ffmpeg-python>=0.2",
+]
+browser = ["playwright>=1.50", "playwright-stealth>=2.0"]
+observe = [
+  "structlog>=25.0",
+  "opentelemetry-api>=1.30",
+  "opentelemetry-sdk>=1.30",
+]
+feeds = ["feedparser>=6.0", "dateparser>=1.2"]
+text = ["ftfy>=6.0", "anyascii>=0.3", "tldextract>=5.0", "python-slugify>=8.0"]
 docs = ["sphinx>=7.0", "furo>=2024.0", "sphinx-autodoc-typehints>=2.0"]
-all = ["pyfetcher[tui,metadata,curl,cloudscraper]"]
+full = [
+  "pyfetcher[tui,metadata,curl,cloudscraper,pipeline,downloaders,extractors,media,browser,observe,feeds,text]",
+]
 dev = [
   "pytest>=8.0",
   "pytest-asyncio>=0.23",
   "pytest-cov>=5.0",
   "respx>=0.21",
   "aioresponses>=0.7",
+  "pydantic-settings>=2.0",
 ]
 
 [project.scripts]
