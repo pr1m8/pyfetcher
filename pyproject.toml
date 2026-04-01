@@ -78,6 +78,7 @@ dev = [
   "respx>=0.21",
   "aioresponses>=0.7",
   "pydantic-settings>=2.0",
+  "ruff>=0.15",
 ]
 
 [project.scripts]

@@ -32,7 +32,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pdm install -G dev -G all
+        run: |
+          pdm lock -G dev -G db -G text -G extractors -G mcp -G store -G docs
+          pdm install -G dev -G db -G text -G extractors -G mcp -G store
 
       - name: Run tests
         run: pdm run pytest tests/ -v --tb=short --cov=pyfetcher --cov-report=xml
@@ -60,28 +62,12 @@ jobs:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: pdm install -G dev
+        run: |
+          pdm lock -G dev
+          pdm install -G dev
 
       - name: Run ruff check
         run: pdm run ruff check src/ tests/
 
       - name: Run ruff format check
         run: pdm run ruff format --check src/ tests/
-
-  typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install PDM
-        uses: pdm-project/setup-pdm@v4
-        with:
-          python-version: "3.13"
-
-      - name: Install dependencies
-        run: pdm install -G dev -G all
