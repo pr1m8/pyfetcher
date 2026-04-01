@@ -34,25 +34,25 @@ Advanced web fetching, scraping, and content acquisition toolkit for Python. Fro
 ## Installation
 
 ```bash
-pip install pyfetcher
+pip install fetchkit
 ```
 
 Optional dependency groups:
 
 ```bash
-pip install 'pyfetcher[tui]'          # Textual TUI
-pip install 'pyfetcher[metadata]'      # extruct structured data
-pip install 'pyfetcher[curl]'          # curl_cffi TLS fingerprinting
-pip install 'pyfetcher[cloudscraper]'  # Cloudflare bypass
-pip install 'pyfetcher[db]'            # Postgres + SQLAlchemy + Alembic
-pip install 'pyfetcher[store]'         # MinIO/S3 object storage
-pip install 'pyfetcher[pipeline]'      # db + store (full pipeline)
-pip install 'pyfetcher[downloaders]'   # yt-dlp + gallery-dl
-pip install 'pyfetcher[extractors]'    # trafilatura, readability, html2text
-pip install 'pyfetcher[media]'         # mutagen, pymediainfo, exifread, pypdf
-pip install 'pyfetcher[browser]'       # Playwright + stealth
-pip install 'pyfetcher[feeds]'         # feedparser + dateparser
-pip install 'pyfetcher[full]'          # Everything
+pip install 'fetchkit[tui]'          # Textual TUI
+pip install 'fetchkit[metadata]'      # extruct structured data
+pip install 'fetchkit[curl]'          # curl_cffi TLS fingerprinting
+pip install 'fetchkit[cloudscraper]'  # Cloudflare bypass
+pip install 'fetchkit[db]'            # Postgres + SQLAlchemy + Alembic
+pip install 'fetchkit[store]'         # MinIO/S3 object storage
+pip install 'fetchkit[pipeline]'      # db + store (full pipeline)
+pip install 'fetchkit[downloaders]'   # yt-dlp + gallery-dl
+pip install 'fetchkit[extractors]'    # trafilatura, readability, html2text
+pip install 'fetchkit[media]'         # mutagen, pymediainfo, exifread, pypdf
+pip install 'fetchkit[browser]'       # Playwright + stealth
+pip install 'fetchkit[feeds]'         # feedparser + dateparser
+pip install 'fetchkit[full]'          # Everything
 ```
 
 ## Quick Start
