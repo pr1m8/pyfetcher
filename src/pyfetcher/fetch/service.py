@@ -45,6 +45,21 @@ from pyfetcher.transports.aiohttp import AiohttpTransport
 from pyfetcher.transports.base import AsyncTransport, SyncTransport
 from pyfetcher.transports.httpx import HttpxTransport
 
+# Optional transport backends (lazy imports guard missing dependencies)
+try:
+    from pyfetcher.transports.curl_cffi import (  # noqa: F401  # nosec B110
+        CurlCffiTransport,
+    )
+except Exception:  # pragma: no cover  # noqa: S110
+    CurlCffiTransport = None  # type: ignore[assignment,misc]  # nosec B110
+
+try:
+    from pyfetcher.transports.cloudscraper import (  # noqa: F401  # nosec B110
+        CloudscraperTransport,
+    )
+except Exception:  # pragma: no cover  # noqa: S110
+    CloudscraperTransport = None  # type: ignore[assignment,misc]  # nosec B110
+
 logger = logging.getLogger("pyfetcher.fetch")
 
 
@@ -86,6 +101,8 @@ class FetchService:
         self.httpx_transport = httpx_transport or HttpxTransport()
         self.aiohttp_transport = aiohttp_transport or AiohttpTransport()
         self.rate_limiter = rate_limiter
+        self._curl_cffi_transport: CurlCffiTransport | None = None  # type: ignore[type-arg]
+        self._cloudscraper_transport: CloudscraperTransport | None = None  # type: ignore[type-arg]
 
     def _prepare_request(self, request: FetchRequest) -> FetchRequest:
         """Merge provider headers into the request.
@@ -114,6 +131,18 @@ class FetchService:
         """
         if request.backend == "httpx":
             return self.httpx_transport
+        if request.backend == "curl_cffi":
+            if CurlCffiTransport is None:
+                raise ValueError("curl_cffi backend requires the 'curl_cffi' package")
+            if self._curl_cffi_transport is None:
+                self._curl_cffi_transport = CurlCffiTransport()
+            return self._curl_cffi_transport  # type: ignore[return-value]
+        if request.backend == "cloudscraper":
+            if CloudscraperTransport is None:
+                raise ValueError("cloudscraper backend requires the 'cloudscraper' package")
+            if self._cloudscraper_transport is None:
+                self._cloudscraper_transport = CloudscraperTransport()
+            return self._cloudscraper_transport  # type: ignore[return-value]
         raise ValueError(f"Backend does not support synchronous fetch: {request.backend!r}")
 
     def _get_async_transport(self, request: FetchRequest) -> AsyncTransport:
@@ -132,6 +161,12 @@ class FetchService:
             return self.httpx_transport
         if request.backend == "aiohttp":
             return self.aiohttp_transport
+        if request.backend == "curl_cffi":
+            if CurlCffiTransport is None:
+                raise ValueError("curl_cffi backend requires the 'curl_cffi' package")
+            if self._curl_cffi_transport is None:
+                self._curl_cffi_transport = CurlCffiTransport()
+            return self._curl_cffi_transport  # type: ignore[return-value]
         raise ValueError(f"Unsupported async backend: {request.backend!r}")
 
     def _maybe_raise_retryable_status(self, response: FetchResponse, request: FetchRequest) -> None:
@@ -320,7 +355,7 @@ class FetchService:
         Closes any internally-managed async transport clients. Externally
         provided transports are not closed.
         """
-        for transport in (self.httpx_transport, self.aiohttp_transport):
+        for transport in (self.httpx_transport, self.aiohttp_transport, self._curl_cffi_transport):
             aclose = getattr(transport, "aclose", None)
             if callable(aclose):
                 await aclose()

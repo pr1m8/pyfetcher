@@ -30,8 +30,10 @@ classifiers = [
 [project.optional-dependencies]
 tui = ["textual>=0.40"]
 metadata = ["extruct>=0.17", "w3lib>=2.0"]
+curl = ["curl_cffi>=0.7"]
+cloudscraper = ["cloudscraper>=1.2"]
 docs = ["sphinx>=7.0", "furo>=2024.0", "sphinx-autodoc-typehints>=2.0"]
-all = ["pyfetcher[tui,metadata]"]
+all = ["pyfetcher[tui,metadata,curl,cloudscraper]"]
 dev = [
   "pytest>=8.0",
   "pytest-asyncio>=0.23",
