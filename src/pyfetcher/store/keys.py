@@ -11,7 +11,7 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
-from python_slugify import slugify  # type: ignore[import-untyped]
+from slugify import slugify  # type: ignore[import-untyped]
 
 
 def generate_media_key(
