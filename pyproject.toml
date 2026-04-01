@@ -72,6 +72,7 @@ docs = [
   "furo>=2024.0",
   "sphinx-autodoc-typehints>=2.0",
   "sphinxcontrib-mermaid>=1.0",
+  "sphinx-design>=0.6",
 ]
 full = [
   "fetchkit[tui,metadata,curl,cloudscraper,pipeline,downloaders,extractors,media,browser,observe,feeds,text,mcp]",
