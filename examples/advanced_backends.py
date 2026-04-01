@@ -75,7 +75,37 @@ def backend_comparison() -> None:
     print("  cloudscraper  |  Y   |   N   |   N    |       N         |    Y     ")
 
 
+def pipeline_integration_example() -> None:
+    """Show how backends integrate with the pipeline.
+
+    When running the full crawl-scrape-download pipeline, the backend
+    is configured via PyfetcherConfig and used automatically by the
+    crawl stage.
+
+    Install: pip install 'pyfetcher[pipeline]'
+    """
+    print("\n=== Pipeline Integration ===")
+    print("  The pipeline uses the configured backend for all crawl requests.")
+    print()
+    print("  Configure via environment variable:")
+    print("    export PYFETCHER_FETCH_BACKEND=curl_cffi")
+    print()
+    print("  Or programmatically:")
+    print("    from pyfetcher.config import PyfetcherConfig")
+    print("    from pyfetcher.pipeline.runner import PipelineRunner")
+    print()
+    print("    config = PyfetcherConfig(fetch_backend='curl_cffi')")
+    print("    runner = PipelineRunner(config)")
+    print("    await runner.start()")
+    print()
+    print("  Infrastructure required:")
+    print("    make infra-up   # Start Postgres + MinIO")
+    print("    make migrate    # Apply database migrations")
+    print("    make pipeline   # Run the pipeline")
+
+
 if __name__ == "__main__":
     backend_comparison()
     curl_cffi_example()
     cloudscraper_example()
+    pipeline_integration_example()
