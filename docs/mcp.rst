@@ -4,6 +4,46 @@ MCP Server
 fetchkit ships as a Model Context Protocol (MCP) server, enabling AI agents
 to fetch, scrape, extract, and download web content autonomously.
 
+.. mermaid::
+
+   flowchart LR
+       subgraph Clients
+           Claude["🤖 Claude Desktop"]
+           CC["⌨️ Claude Code"]
+           LC["🦜 LangChain Agent"]
+           Custom["🔧 Any MCP Client"]
+       end
+
+       subgraph fetchkit MCP Server
+           Tools["16 Tools"]
+           Resources["4 Resources"]
+           Prompts["4 Prompts"]
+       end
+
+       subgraph pyfetcher Core
+           Fetch["FetchService"]
+           Scrape["Scrape Utils"]
+           Headers["Browser Profiles"]
+           Extract["Extractors"]
+           DL["Downloaders"]
+       end
+
+       Claude -- "stdio" --> Tools
+       CC -- "stdio" --> Tools
+       LC -- "HTTP" --> Tools
+       Custom -- "HTTP/stdio" --> Tools
+
+       Tools --> Fetch
+       Tools --> Scrape
+       Tools --> Headers
+       Tools --> Extract
+       Tools --> DL
+
+       style Tools fill:#E74C3C,color:#fff
+       style Resources fill:#3498DB,color:#fff
+       style Prompts fill:#9B59B6,color:#fff
+       style Fetch fill:#2ECC71,color:#fff
+
 Installation
 ------------
 

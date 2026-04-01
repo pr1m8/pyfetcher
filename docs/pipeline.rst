@@ -10,15 +10,58 @@ pyfetcher includes an event-driven pipeline that connects three stages:
 Architecture
 ------------
 
-.. code-block:: text
+.. mermaid::
 
-   Seeds / RSS / Sitemap
-        |
-   [Crawl Stage] --NOTIFY--> [Scrape Stage] --NOTIFY--> [Download Stage]
-        |                          |                           |
-        v                          v                           v
-   pages table              pages (enriched)            media_assets table
-   + new crawl jobs         + download jobs             + MinIO objects
+   flowchart LR
+       Seeds["Seeds / RSS / Sitemap"] --> Crawl
+
+       subgraph Pipeline
+           Crawl["🔍 Crawl Stage"]
+           Scrape["📄 Scrape Stage"]
+           Download["💾 Download Stage"]
+           Crawl -- "PG NOTIFY" --> Scrape
+           Scrape -- "PG NOTIFY" --> Download
+       end
+
+       Crawl --> Pages[(pages table)]
+       Crawl --> NewJobs["new crawl jobs"]
+       Scrape --> Enriched[(pages enriched)]
+       Scrape --> DlJobs["download jobs"]
+       Download --> Media[(media_assets)]
+       Download --> MinIO[("MinIO objects")]
+
+       style Crawl fill:#4A90D9,color:#fff
+       style Scrape fill:#7B68EE,color:#fff
+       style Download fill:#2ECC71,color:#fff
+       style MinIO fill:#F39C12,color:#fff
+
+Data Flow
+^^^^^^^^^
+
+.. mermaid::
+
+   sequenceDiagram
+       participant S as Seeds
+       participant C as Crawl Worker
+       participant PG as PostgreSQL
+       participant Sc as Scrape Worker
+       participant D as Download Worker
+       participant M as MinIO
+
+       S->>PG: Insert crawl jobs
+       PG-->>C: NOTIFY crawl_jobs
+       C->>PG: Claim job (SELECT FOR UPDATE SKIP LOCKED)
+       C->>C: Fetch page via FetchService
+       C->>PG: Store page + create scrape job
+       PG-->>Sc: NOTIFY scrape_jobs
+       Sc->>PG: Claim job
+       Sc->>Sc: Extract text, metadata, media URLs
+       Sc->>PG: Update page + create download jobs
+       PG-->>D: NOTIFY download_jobs
+       D->>PG: Claim job
+       D->>D: Download via yt-dlp / gallery-dl / HTTP
+       D->>M: Upload to MinIO
+       D->>PG: Record media_asset
 
 Each stage:
 

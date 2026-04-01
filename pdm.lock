@@ -5,7 +5,7 @@
 groups = ["default", "db", "dev", "docs", "extractors", "mcp", "store", "text"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:9e6a5c00348c62a10f9fb7919437679ecd4b4212e528e28b9ba6651119564e8b"
+content_hash = "sha256:4e9d43a8f5f2c416f994f72f851addad18e55c2d7cf80463c42e19e686d615ce"
 
 [[metadata.targets]]
 requires_python = ">=3.13"
@@ -2724,6 +2724,20 @@ summary = ""
 files = [
     {file = "sphinxcontrib-jsmath-1.0.1.tar.gz", hash = "sha256:a9925e4a4587247ed2191a22df5f6970656cb8ca2bd6284309578f2153e0c4b8"},
     {file = "sphinxcontrib_jsmath-1.0.1-py2.py3-none-any.whl", hash = "sha256:2ec2eaebfb78f3f2078e73666b1415417a116cc848b72e5172e596c871103178"},
+]
+
+[[package]]
+name = "sphinxcontrib-mermaid"
+version = "2.0.1"
+summary = ""
+dependencies = [
+    "jinja2",
+    "pyyaml",
+    "sphinx",
+]
+files = [
+    {file = "sphinxcontrib_mermaid-2.0.1-py3-none-any.whl", hash = "sha256:9dca7fbe827bad5e7e2b97c4047682cfd26e3e07398cfdc96c7a8842ae7f06e7"},
+    {file = "sphinxcontrib_mermaid-2.0.1.tar.gz", hash = "sha256:a21a385a059a6cafd192aa3a586b14bf5c42721e229db67b459dc825d7f0a497"},
 ]
 
 [[package]]

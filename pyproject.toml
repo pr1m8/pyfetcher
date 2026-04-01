@@ -67,7 +67,12 @@ feeds = ["feedparser>=6.0", "dateparser>=1.2"]
 text = ["ftfy>=6.0", "anyascii>=0.3", "tldextract>=5.0", "python-slugify>=8.0"]
 mcp = ["fastmcp>=2.0"]
 langchain = ["langchain-mcp-adapters>=0.1", "langchain-core>=0.3"]
-docs = ["sphinx>=7.0", "furo>=2024.0", "sphinx-autodoc-typehints>=2.0"]
+docs = [
+  "sphinx>=7.0",
+  "furo>=2024.0",
+  "sphinx-autodoc-typehints>=2.0",
+  "sphinxcontrib-mermaid>=1.0",
+]
 full = [
   "fetchkit[tui,metadata,curl,cloudscraper,pipeline,downloaders,extractors,media,browser,observe,feeds,text,mcp]",
 ]

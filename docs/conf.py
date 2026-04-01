@@ -16,7 +16,11 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx.ext.todo",
+    "sphinxcontrib.mermaid",
 ]
+
+mermaid_version = "11"
+mermaid_init_js = "mermaid.initialize({startOnLoad:true, theme:'neutral'});"
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
