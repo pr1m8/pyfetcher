@@ -1,0 +1,89 @@
+# pyfetcher - Project Guide
+
+## Overview
+
+pyfetcher is an advanced web fetching and scraping toolkit for Python 3.13+. It provides realistic browser header generation, multiple HTTP backends, rate limiting, retry with backoff, comprehensive scraping tools, and both CLI and TUI interfaces.
+
+## Architecture
+
+```
+src/pyfetcher/
+├── contracts/     # Pydantic models: URL, FetchRequest, FetchResponse, policies
+├── headers/       # Browser header generation: profiles, UA rotation, static providers
+├── transports/    # HTTP backends: httpx (sync+async), aiohttp (async)
+├── retry/         # Tenacity-based retry with exponential backoff
+├── ratelimit/     # Per-domain + global rate limiting with token buckets
+├── fetch/         # Orchestration: FetchService, function API, batch, stream
+├── scrape/        # CSS selectors, links, forms, robots.txt, sitemap, content extraction
+├── metadata/      # HTML metadata, Open Graph, extruct structured data
+├── download/      # Async streaming file downloads
+├── cli/           # Click-based CLI (pyfetcher command)
+├── tui/           # Textual-based interactive TUI (pyfetcher-tui command)
+└── rich.py        # Rich table rendering helpers
+```
+
+### Layer Dependencies (top-down)
+
+1. `contracts` - Pure Pydantic models, no I/O
+2. `headers` - Browser profile system, depends only on contracts
+3. `transports` - HTTP backends, depends on contracts
+4. `retry` - Tenacity adapters, depends on contracts
+5. `ratelimit` - Token bucket rate limiter, standalone
+6. `fetch` - Orchestration composing headers + transports + retry + ratelimit
+7. `scrape` / `metadata` / `download` - Higher-level tools using fetch
+8. `cli` / `tui` - User interfaces using everything above
+
+## Development
+
+### Setup
+
+```bash
+pdm install -G dev      # Install with dev dependencies
+pdm install -G dev -G all  # Include optional deps (textual, extruct)
+```
+
+### Testing
+
+```bash
+pytest tests/ -v                    # Run all tests
+pytest tests/test_scrape.py -v      # Run specific module
+pytest tests/ --cov=pyfetcher       # With coverage
+```
+
+- Tests use **pytest** with **pytest-asyncio** (auto mode)
+- Fixtures are in `tests/conftest.py`
+- Unit tests cover: contracts, headers, scrape, metadata, retry, ratelimit, stream/batch
+
+### Linting & Formatting
+
+```bash
+trunk fmt src/ tests/     # Format with trunk (black + isort)
+trunk check src/ tests/   # Lint with trunk (ruff + bandit + etc.)
+```
+
+Trunk configuration is in `.trunk/trunk.yaml`. Active linters: ruff, black, isort, bandit, markdownlint, prettier, taplo, yamllint.
+
+### Code Style
+
+- **Python 3.13+** - uses `type` aliases, modern syntax
+- **Pydantic v2** models with `ConfigDict(extra="forbid", frozen=True)`
+- **Google-style docstrings** with Purpose, Design, Args, Returns, Raises, Examples
+- **Protocol-based abstractions** (HeaderProvider, SyncTransport, AsyncTransport)
+- All imports use `from __future__ import annotations`
+- Line length: 100 characters
+
+### Key Patterns
+
+- **Optional dependency guards**: `try/except` blocks in `__init__.py` files protect against missing optional deps
+- **`# nosec B311`**: Used for intentional `random.choice` in header randomization (not security-sensitive)
+- **Frozen models**: All Pydantic models are frozen (immutable) - use `model_copy(update={...})` to create modified copies
+- **Async-first**: Most operations support both sync and async; async is the primary pattern
+
+## CLI Entry Points
+
+- `pyfetcher` - Main CLI (defined in `pyfetcher.cli.app:main`)
+- `pyfetcher-tui` - Interactive TUI (defined in `pyfetcher.tui.app:run_tui`)
+
+## Browser Profiles
+
+11 profiles covering Chrome/Firefox/Safari/Edge across Windows/macOS/Linux/Android/iOS. Each profile bundles consistent User-Agent + Client Hints + Sec-Fetch-\* + Accept headers. Profiles are weighted by real-world market share for realistic rotation.

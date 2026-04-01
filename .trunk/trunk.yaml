@@ -16,6 +16,10 @@ runtimes:
     - python@3.10.8
 # This is the section where you manage your linters. (https://docs.trunk.io/check/configuration)
 lint:
+  ignore:
+    - linters: [bandit]
+      paths:
+        - tests/**
   enabled:
     - bandit@1.9.4
     - black@26.3.1
