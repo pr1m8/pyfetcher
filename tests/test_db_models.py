@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import uuid
 
-import pytest
-
 from pyfetcher.db.models.base import Base, TimestampMixin, UUIDMixin
 from pyfetcher.db.models.feed import Feed
 from pyfetcher.db.models.host import Host

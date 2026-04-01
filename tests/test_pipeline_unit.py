@@ -234,7 +234,7 @@ class TestPipelineStageRunLoop:
 
             try:
                 await asyncio.wait_for(stage.run(), timeout=5.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 stage.stop()
 
             # complete_job should have been called for the processed job

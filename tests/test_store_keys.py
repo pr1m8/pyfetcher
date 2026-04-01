@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import re
-from unittest.mock import patch
-
-import pytest
 
 from pyfetcher.store.keys import _ext_from_mime, generate_media_key
 

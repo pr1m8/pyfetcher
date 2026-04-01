@@ -47,7 +47,7 @@ def _check_textual() -> None:
     """Raise a helpful error if textual is not installed."""
     if not HAS_TEXTUAL:
         raise ImportError(
-            "The pyfetcher TUI requires 'textual'. " "Install it with: pip install 'pyfetcher[tui]'"
+            "The pyfetcher TUI requires 'textual'. Install it with: pip install 'pyfetcher[tui]'"
         )
 
 

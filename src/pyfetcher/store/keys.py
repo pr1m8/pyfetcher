@@ -8,7 +8,7 @@ Purpose:
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import PurePosixPath
 
 from slugify import slugify  # type: ignore[import-untyped]
@@ -35,7 +35,7 @@ def generate_media_key(
         A string key suitable for MinIO/S3.
     """
     url_hash = hashlib.sha256(source_url.encode()).hexdigest()[:12]
-    date_part = datetime.now(timezone.utc).strftime("%Y/%m/%d")
+    date_part = datetime.now(UTC).strftime("%Y/%m/%d")
 
     if filename:
         safe_name = slugify(PurePosixPath(filename).stem, max_length=80)

@@ -34,7 +34,10 @@ class LinkInfo:
     Examples:
         ::
 
-            >>> link = LinkInfo(url="https://example.com", text="Example", rel=None, is_external=False)
+            >>> link = LinkInfo(
+            ...     url="https://example.com", text="Example",
+            ...     rel=None, is_external=False,
+            ... )
             >>> link.url
             'https://example.com'
     """

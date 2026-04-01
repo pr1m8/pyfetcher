@@ -248,9 +248,7 @@ FIREFOX_WIN = BrowserProfile(
     name="firefox_win",
     browser="firefox",
     platform="Windows",
-    user_agent=(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) " "Gecko/20100101 Firefox/135.0"
-    ),
+    user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0"),
     sec_ch_ua="",  # Firefox does not send Client Hints
     sec_ch_ua_full_version_list="",
     sec_ch_ua_mobile="",
@@ -274,7 +272,7 @@ FIREFOX_MAC = BrowserProfile(
     browser="firefox",
     platform="macOS",
     user_agent=(
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:135.0) " "Gecko/20100101 Firefox/135.0"
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:135.0) Gecko/20100101 Firefox/135.0"
     ),
     sec_ch_ua="",
     sec_ch_ua_full_version_list="",
@@ -298,7 +296,7 @@ FIREFOX_LINUX = BrowserProfile(
     name="firefox_linux",
     browser="firefox",
     platform="Linux",
-    user_agent=("Mozilla/5.0 (X11; Linux x86_64; rv:135.0) " "Gecko/20100101 Firefox/135.0"),
+    user_agent=("Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0"),
     sec_ch_ua="",
     sec_ch_ua_full_version_list="",
     sec_ch_ua_mobile="",

@@ -8,7 +8,7 @@ Purpose:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from pyfetcher.scrape.robots import is_allowed, parse_robots_txt
@@ -76,9 +76,9 @@ class PolitenessEnforcer:
             hostname: The target hostname.
             delay_seconds: Minimum delay between requests.
         """
-        now = datetime.now(timezone.utc).timestamp()
+        now = datetime.now(UTC).timestamp()
         last = self._last_fetch.get(hostname, 0.0)
         wait = delay_seconds - (now - last)
         if wait > 0:
             await asyncio.sleep(wait)
-        self._last_fetch[hostname] = datetime.now(timezone.utc).timestamp()
+        self._last_fetch[hostname] = datetime.now(UTC).timestamp()

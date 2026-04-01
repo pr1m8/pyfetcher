@@ -149,9 +149,12 @@ def is_allowed(
     for allowed, rule_path in agent_rules:
         if path.startswith(rule_path) or rule_path == "":
             specificity = len(rule_path)
-            if best_match is None or specificity > best_match[1]:
-                best_match = (allowed, specificity)
-            elif specificity == best_match[1] and allowed:
+            is_better = (
+                best_match is None
+                or specificity > best_match[1]
+                or (specificity == best_match[1] and allowed)
+            )
+            if is_better:
                 best_match = (allowed, specificity)
 
     if best_match is None:

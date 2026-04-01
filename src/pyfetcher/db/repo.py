@@ -9,7 +9,7 @@ Purpose:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -37,7 +37,7 @@ async def claim_job(
     Returns:
         The claimed :class:`Job`, or ``None`` if no jobs are available.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stmt = (
         select(Job)
         .where(
@@ -74,7 +74,7 @@ async def complete_job(
         job_id: The job ID to complete.
         result: Optional result payload to store.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stmt = (
         update(Job)
         .where(Job.id == job_id)
@@ -98,7 +98,7 @@ async def fail_job(
         error: Error description.
         retry: Whether to schedule a retry (respects max_retries).
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stmt = select(Job).where(Job.id == job_id)
     result = await session.execute(stmt)
     job = result.scalar_one()
@@ -110,7 +110,7 @@ async def fail_job(
         job.state = "failed"
         job.retry_count += 1
         backoff = min(2**job.retry_count, 300)
-        job.next_retry_at = datetime.fromtimestamp(now.timestamp() + backoff, tz=timezone.utc)
+        job.next_retry_at = datetime.fromtimestamp(now.timestamp() + backoff, tz=UTC)
     else:
         job.state = "dead"
         job.completed_at = now
@@ -183,7 +183,7 @@ async def mark_url_seen(
         url_hash: The xxhash64 of the normalized URL.
         url: The original URL string.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stmt = pg_insert(SeenURL).values(
         url_hash=url_hash,
         url=url,

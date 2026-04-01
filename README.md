@@ -2,9 +2,9 @@
 
 # fetchkit
 
-**Advanced web fetching, scraping, and content acquisition toolkit for Python.**
+**Agentic web infrastructure for autonomous fetching, scraping, and content acquisition.**
 
-From simple HTTP requests to full crawl-scrape-download pipelines backed by Postgres and MinIO.
+Give AI agents the power to fetch, scrape, extract, and download anything on the web -- with realistic browser fingerprints, structured outputs, and a full crawl-scrape-download pipeline backed by Postgres and MinIO.
 
 [![PyPI](https://img.shields.io/pypi/v/fetchkit?style=flat-square&logo=pypi&logoColor=white&color=blue)](https://pypi.org/project/fetchkit/)
 [![Python](https://img.shields.io/pypi/pyversions/fetchkit?style=flat-square&logo=python&logoColor=white)](https://pypi.org/project/fetchkit/)
@@ -13,13 +13,30 @@ From simple HTTP requests to full crawl-scrape-download pipelines backed by Post
 [![License](https://img.shields.io/github/license/pr1m8/pyfetcher?style=flat-square&color=green)](https://github.com/pr1m8/pyfetcher/blob/main/LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=flat-square)](https://github.com/astral-sh/ruff)
 [![PDM](https://img.shields.io/badge/pdm-managed-blueviolet?style=flat-square)](https://pdm-project.org)
-[![Tests](https://img.shields.io/badge/tests-358_passed-brightgreen?style=flat-square)](#testing)
+[![Tests](https://img.shields.io/badge/tests-488_passed-brightgreen?style=flat-square)](#development)
+[![MCP](https://img.shields.io/badge/MCP-16_tools-orange?style=flat-square)](#mcp-server-ai-agent-integration)
 
 ---
 
-[Installation](#installation) | [Quick Start](#quick-start) | [CLI](#cli) | [Pipeline](#pipeline) | [Documentation](https://pr1m8.github.io/pyfetcher/) | [Examples](examples/)
+[MCP Server](#mcp-server-ai-agent-integration) | [Quick Start](#quick-start) | [Pipeline](#pipeline) | [CLI](#cli) | [Documentation](https://pr1m8.github.io/pyfetcher/) | [Examples](examples/)
 
 </div>
+
+## Why fetchkit?
+
+**The problem**: AI agents need to interact with the web -- fetch pages, extract data, download files -- but existing tools aren't designed for autonomous operation. They lack structured outputs, realistic browser fingerprints, and pipeline orchestration.
+
+**fetchkit solves this** by providing:
+
+1. **MCP Server** -- 16 tools that any AI agent (Claude, LangChain, LangGraph) can call directly. Structured Pydantic outputs, not raw HTML.
+2. **Realistic browser identity** -- 11 profiles with consistent UA + Client Hints + Sec-Fetch-\* headers. TLS fingerprinting via curl_cffi. Cloudflare bypass.
+3. **Full pipeline** -- Event-driven crawl -> scrape -> download backed by Postgres job queues and MinIO object storage.
+4. **Deep downloader integration** -- yt-dlp and gallery-dl Python APIs with progress hooks and metadata extraction.
+
+```bash
+pip install 'fetchkit[mcp]'     # AI agent integration
+pip install 'fetchkit[full]'    # Everything
+```
 
 ## Highlights
 
