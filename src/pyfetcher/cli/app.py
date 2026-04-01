@@ -43,7 +43,12 @@ def cli() -> None:
 @click.option("--method", "-m", default="GET", help="HTTP method.")
 @click.option("--header", "-H", multiple=True, help="Custom header (Name: Value).")
 @click.option("--data", "-d", default=None, help="Request body data.")
-@click.option("--backend", "-b", default="httpx", help="HTTP backend (httpx, aiohttp).")
+@click.option(
+    "--backend",
+    "-b",
+    default="httpx",
+    help="HTTP backend (httpx, aiohttp, curl_cffi, cloudscraper).",
+)
 @click.option("--profile", "-p", default="chrome_win", help="Browser profile for headers.")
 @click.option("--no-verify", is_flag=True, help="Disable SSL verification.")
 @click.option("--follow/--no-follow", default=True, help="Follow redirects.")

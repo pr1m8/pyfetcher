@@ -16,6 +16,13 @@ Fetch a URL and display the response:
    pyfetcher fetch https://example.com -o raw
    pyfetcher fetch https://example.com --profile firefox_win
 
+Backends can be selected with ``-b``:
+
+.. code-block:: bash
+
+   pyfetcher fetch https://example.com -b curl_cffi
+   pyfetcher fetch https://example.com -b cloudscraper
+
 headers
 -------
 
