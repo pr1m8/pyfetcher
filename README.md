@@ -40,76 +40,74 @@ pip install 'fetchkit[full]'    # Everything
 
 ## Highlights
 
-```
+```bash
 pip install fetchkit                   # Core: fetch, scrape, headers
+pip install 'fetchkit[mcp]'            # + MCP server for AI agents
 pip install 'fetchkit[pipeline]'       # + Postgres job queue + MinIO storage
 pip install 'fetchkit[full]'           # Everything including yt-dlp, Playwright, etc.
 ```
 
-<table>
-<tr>
-<td width="50%">
-
-**Fetch with realistic browser headers**
+### Fetch with realistic browser headers
 
 ```python
 from pyfetcher import fetch
 
 response = fetch("https://example.com")
-# Sends Chrome-like headers with Client Hints,
-# Sec-Fetch-*, UA rotation automatically
+print(response.status_code, response.ok)
+# Sends Chrome-like headers with Client Hints, Sec-Fetch-*, UA rotation automatically
 ```
 
-</td>
-<td width="50%">
-
-**Scrape anything**
+### Scrape anything
 
 ```python
-from pyfetcher.scrape import (
-    extract_links, extract_text,
-    extract_readable_text,
-)
+from pyfetcher.scrape import extract_links, extract_text, extract_readable_text
 
-links = extract_links(html, base_url=url)
-titles = extract_text(html, "h1")
-article = extract_readable_text(html)
+links = extract_links(html, base_url="https://example.com")  # all links with internal/external tags
+titles = extract_text(html, "h1")                             # CSS selector extraction
+article = extract_readable_text(html)                         # strips scripts, nav, ads
 ```
 
-</td>
-</tr>
-<tr>
-<td>
-
-**4 HTTP backends**
+### 4 HTTP backends -- pick the right one for the job
 
 ```python
 from pyfetcher import FetchRequest, fetch
 
-# TLS fingerprinting (bypass bot detection)
-fetch(FetchRequest(url=url, backend="curl_cffi"))
-
-# Cloudflare bypass
-fetch(FetchRequest(url=url, backend="cloudscraper"))
+response = fetch("https://example.com")                                        # httpx (default, HTTP/2)
+response = fetch(FetchRequest(url="https://example.com", backend="aiohttp"))   # aiohttp (pure async)
+response = fetch(FetchRequest(url="https://example.com", backend="curl_cffi")) # TLS fingerprinting
+response = fetch(FetchRequest(url="https://example.com", backend="cloudscraper")) # Cloudflare bypass
 ```
 
-</td>
-<td>
-
-**Download media with yt-dlp**
+### Download media with yt-dlp & gallery-dl
 
 ```python
 from pyfetcher.downloaders.ytdlp import YtdlpDownloader
+from pyfetcher.downloaders.gallerydl import GalleryDlDownloader
 
-dl = YtdlpDownloader()
-info = await dl.extract_info(video_url)
-results = await dl.download(video_url,
-    output_dir="./media")
+# Video/audio with progress tracking
+yt = YtdlpDownloader()
+info = await yt.extract_info("https://youtube.com/watch?v=...")    # metadata only
+results = await yt.download("https://youtube.com/watch?v=...",     # full download
+    output_dir="./media", progress_callback=lambda p: print(p.status))
+
+# Image galleries (170+ supported sites)
+gdl = GalleryDlDownloader()
+results = await gdl.download("https://imgur.com/gallery/...", output_dir="./images")
 ```
 
-</td>
-</tr>
-</table>
+### MCP Server -- give AI agents web superpowers
+
+```bash
+pyfetcher-mcp                  # stdio for Claude Desktop / Claude Code
+pyfetcher-mcp --http 8000      # HTTP for LangChain / remote agents
+```
+
+```python
+# LangChain integration
+from langchain_mcp_adapters import MultiServerMCPClient
+client = MultiServerMCPClient({"pyfetcher": {"transport": "http", "url": "http://localhost:8000/mcp"}})
+tools = await client.get_tools()  # 16 structured tools ready for any agent
+```
 
 ## Features
 
