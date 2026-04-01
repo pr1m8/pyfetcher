@@ -12,3 +12,10 @@ API Reference
    metadata
    download
    ratelimit
+   crawler
+   pipeline_api
+   extractors_api
+   downloaders
+   store
+   events
+   config

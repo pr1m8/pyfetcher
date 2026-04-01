@@ -1,7 +1,7 @@
 [project]
 name = "pyfetcher"
-version = "0.1.0"
-description = "Advanced web fetching and scraping toolkit with realistic browser header generation"
+version = "0.2.0"
+description = "Advanced web fetching, scraping, and content acquisition toolkit with crawl-scrape-download pipeline"
 authors = [{ name = "Will", email = "you@example.com" }]
 dependencies = [
   "pydantic>=2.0",

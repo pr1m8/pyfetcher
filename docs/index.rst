@@ -10,6 +10,8 @@ Advanced web fetching and scraping toolkit for Python.
    quickstart
    headers
    scraping
+   pipeline
+   infrastructure
    cli
    tui
    api/index
