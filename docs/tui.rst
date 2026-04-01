@@ -9,7 +9,7 @@ Installation
 
 .. code-block:: bash
 
-   pip install 'pyfetcher[tui]'
+   pip install 'fetchkit[tui]'
 
 Launching
 ---------

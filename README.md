@@ -8,6 +8,7 @@ From simple HTTP requests to full crawl-scrape-download pipelines backed by Post
 
 [![PyPI](https://img.shields.io/pypi/v/fetchkit?style=flat-square&logo=pypi&logoColor=white&color=blue)](https://pypi.org/project/fetchkit/)
 [![Python](https://img.shields.io/pypi/pyversions/fetchkit?style=flat-square&logo=python&logoColor=white)](https://pypi.org/project/fetchkit/)
+[![Docs](https://img.shields.io/readthedocs/fetchkit?style=flat-square&logo=readthedocs&logoColor=white)](https://fetchkit.readthedocs.io/)
 [![CI](https://img.shields.io/github/actions/workflow/status/pr1m8/pyfetcher/ci.yml?branch=main&style=flat-square&logo=github&label=CI)](https://github.com/pr1m8/pyfetcher/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/pr1m8/pyfetcher?style=flat-square&color=green)](https://github.com/pr1m8/pyfetcher/blob/main/LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json&style=flat-square)](https://github.com/astral-sh/ruff)
@@ -16,7 +17,7 @@ From simple HTTP requests to full crawl-scrape-download pipelines backed by Post
 
 ---
 
-[Installation](#installation) | [Quick Start](#quick-start) | [CLI](#cli) | [Pipeline](#pipeline) | [Documentation](https://pyfetcher.readthedocs.io/) | [Examples](examples/)
+[Installation](#installation) | [Quick Start](#quick-start) | [CLI](#cli) | [Pipeline](#pipeline) | [Documentation](https://fetchkit.readthedocs.io/) | [Examples](examples/)
 
 </div>
 
@@ -373,9 +374,9 @@ make clean         Remove build artifacts
 
 <div align="center">
 
-**[pyfetcher.readthedocs.io](https://pyfetcher.readthedocs.io/)**
+**[fetchkit.readthedocs.io](https://fetchkit.readthedocs.io/)**
 
-[Quick Start](https://pyfetcher.readthedocs.io/en/latest/quickstart.html) | [Headers](https://pyfetcher.readthedocs.io/en/latest/headers.html) | [Scraping](https://pyfetcher.readthedocs.io/en/latest/scraping.html) | [Pipeline](https://pyfetcher.readthedocs.io/en/latest/pipeline.html) | [Infrastructure](https://pyfetcher.readthedocs.io/en/latest/infrastructure.html) | [CLI](https://pyfetcher.readthedocs.io/en/latest/cli.html) | [API Reference](https://pyfetcher.readthedocs.io/en/latest/api/index.html)
+[Quick Start](https://fetchkit.readthedocs.io/en/latest/quickstart.html) | [Headers](https://fetchkit.readthedocs.io/en/latest/headers.html) | [Scraping](https://fetchkit.readthedocs.io/en/latest/scraping.html) | [Pipeline](https://fetchkit.readthedocs.io/en/latest/pipeline.html) | [Infrastructure](https://fetchkit.readthedocs.io/en/latest/infrastructure.html) | [CLI](https://fetchkit.readthedocs.io/en/latest/cli.html) | [API Reference](https://fetchkit.readthedocs.io/en/latest/api/index.html)
 
 </div>
 

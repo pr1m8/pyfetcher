@@ -8,17 +8,25 @@ Install with pip or PDM:
 
 .. code-block:: bash
 
-   pip install pyfetcher
+   pip install fetchkit
    # or
-   pdm add pyfetcher
+   pdm add fetchkit
 
 With optional dependencies:
 
 .. code-block:: bash
 
-   pip install 'pyfetcher[tui]'       # Textual TUI
-   pip install 'pyfetcher[metadata]'   # extruct + w3lib
-   pip install 'pyfetcher[all]'        # Everything
+   pip install 'fetchkit[tui]'           # Textual TUI
+   pip install 'fetchkit[metadata]'       # extruct + w3lib
+   pip install 'fetchkit[pipeline]'       # Postgres + MinIO pipeline
+   pip install 'fetchkit[downloaders]'    # yt-dlp + gallery-dl
+   pip install 'fetchkit[full]'           # Everything
+
+Import as ``pyfetcher``:
+
+.. code-block:: python
+
+   from pyfetcher import fetch, FetchRequest
 
 Basic Usage
 -----------
@@ -62,7 +70,7 @@ curl_cffi (TLS fingerprint impersonation):
 
 .. code-block:: bash
 
-   pip install 'pyfetcher[curl]'
+   pip install 'fetchkit[curl]'
 
 .. code-block:: python
 
@@ -72,7 +80,7 @@ cloudscraper (Cloudflare bypass):
 
 .. code-block:: bash
 
-   pip install 'pyfetcher[cloudscraper]'
+   pip install 'fetchkit[cloudscraper]'
 
 .. code-block:: python
 
