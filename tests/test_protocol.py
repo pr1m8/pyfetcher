@@ -37,6 +37,8 @@ def test_protocol_catalog_is_stable_json_safe_and_omits_runtime_request_fields()
     assert "acquisition.request@1" in keys
     assert "document.gallery_rule@1" in keys
     assert "job.request@1" in keys
+    assert "job.record@1" in keys
+    assert "job.worker_event@1" in keys
     assert "media.metadata@1" in keys
 
     request = catalog.schema_for("http.fetch_request@1")
