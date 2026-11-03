@@ -20,6 +20,9 @@ Public API:
 
 from __future__ import annotations
 
+# Rich CSS/XPath document extraction lives in ``pyfetcher.documents`` so the
+# existing dependency-light BeautifulSoup functions remain compatible.
+from pyfetcher.documents import ExtractedLink, LinkRule, PageDocument, extract_page_links
 from pyfetcher.scrape.content import extract_readable_text
 from pyfetcher.scrape.forms import FormData, extract_forms
 from pyfetcher.scrape.links import LinkInfo, extract_links
@@ -35,12 +38,16 @@ from pyfetcher.scrape.sitemap import SitemapEntry, parse_sitemap
 
 __all__ = [
     "FormData",
+    "ExtractedLink",
     "LinkInfo",
+    "LinkRule",
+    "PageDocument",
     "RobotsRules",
     "SitemapEntry",
     "extract_attrs",
     "extract_forms",
     "extract_links",
+    "extract_page_links",
     "extract_readable_text",
     "extract_table",
     "extract_text",

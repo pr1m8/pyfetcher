@@ -1,8 +1,17 @@
 [project]
 name = "fetchkit"
-version = "0.3.1"
+version = "0.4.0"
 description = "Advanced web fetching, scraping, and content acquisition toolkit with crawl-scrape-download pipeline"
-authors = [{ name = "Will", email = "you@example.com" }]
+authors = [{ name = "Will" }]
+keywords = [
+  "asyncio",
+  "downloader",
+  "http",
+  "http2",
+  "mcp",
+  "scraping",
+  "streaming",
+]
 dependencies = [
   "pydantic>=2.0",
   "httpx[http2]>=0.27",
@@ -16,11 +25,13 @@ dependencies = [
 ]
 requires-python = ">=3.13"
 readme = "README.md"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 classifiers = [
   "Development Status :: 3 - Alpha",
+  "Framework :: AsyncIO",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.13",
   "Topic :: Internet :: WWW/HTTP",
@@ -58,16 +69,25 @@ media = [
   "ffmpeg-python>=0.2",
 ]
 browser = ["playwright>=1.50", "playwright-stealth>=2.0"]
+scrapy = ["scrapy>=2.13"]
+web-poet = ["web-poet>=0.24.1"]
+scrapy-poet = ["fetchkit[scrapy,web-poet]", "scrapy-poet>=0.27"]
+selectors = ["parsel>=1.10"]
+redis = ["redis>=5.2"]
+temporal = ["temporalio[pydantic,opentelemetry]>=1.27"]
 observe = [
   "structlog>=25.0",
   "opentelemetry-api>=1.30",
   "opentelemetry-sdk>=1.30",
+  "opentelemetry-exporter-otlp>=1.30",
 ]
 feeds = ["feedparser>=6.0", "dateparser>=1.2"]
 text = ["ftfy>=6.0", "anyascii>=0.3", "tldextract>=5.0", "python-slugify>=8.0"]
+url-tools = ["w3lib>=2.3", "tldextract>=5.3", "yarl>=1.18"]
 mcp = ["fastmcp>=2.0"]
 langchain = ["langchain-mcp-adapters>=0.1", "langchain-core>=0.3"]
 docs = [
+  "doc8>=1.1",
   "sphinx>=7.0",
   "furo>=2024.0",
   "sphinx-autodoc-typehints>=2.0",
@@ -75,7 +95,7 @@ docs = [
   "sphinx-design>=0.6",
 ]
 full = [
-  "fetchkit[tui,metadata,curl,cloudscraper,pipeline,downloaders,extractors,media,browser,observe,feeds,text,mcp]",
+  "fetchkit[tui,metadata,curl,cloudscraper,pipeline,downloaders,extractors,media,browser,scrapy,scrapy-poet,selectors,redis,temporal,observe,feeds,text,url-tools,mcp,langchain]",
 ]
 dev = [
   "pytest>=8.0",
@@ -85,7 +105,15 @@ dev = [
   "aioresponses>=0.7",
   "pydantic-settings>=2.0",
   "ruff>=0.15",
+  "twine>=6.0",
 ]
+
+[project.urls]
+Changelog = "https://github.com/pr1m8/pyfetcher/blob/main/CHANGELOG.md"
+Documentation = "https://pr1m8.github.io/pyfetcher/"
+Homepage = "https://github.com/pr1m8/pyfetcher"
+Issues = "https://github.com/pr1m8/pyfetcher/issues"
+Repository = "https://github.com/pr1m8/pyfetcher.git"
 
 [project.scripts]
 pyfetcher = "pyfetcher.cli.app:main"
@@ -107,6 +135,10 @@ package-dir = "src"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 
+[tool.coverage.report]
+fail_under = 70
+show_missing = true
+
 [tool.ruff]
 target-version = "py313"
 line-length = 100
@@ -115,6 +147,10 @@ src = ["src"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
 per-file-ignores = { "tests/**" = ["E402", "N806", "N817", "E501", "SIM222"] }
+
+[tool.doc8]
+ignore-path = ["docs/_build"]
+max-line-length = 100
 
 [tool.isort]
 profile = "black"

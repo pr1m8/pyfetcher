@@ -189,6 +189,31 @@ class TestDirectDownloaderDownload:
         assert written.read_bytes() == b"Hello World"
 
     @pytest.mark.asyncio
+    async def test_failed_download_preserves_existing_file_and_removes_partial(self, tmp_path):
+        destination = tmp_path / "hello.txt"
+        destination.write_bytes(b"original")
+
+        async def mock_astream(request):
+            chunk = MagicMock()
+            chunk.data = b"partial"
+            yield chunk
+            raise RuntimeError("connection lost")
+
+        mock_service = MagicMock()
+        mock_service.astream = mock_astream
+        downloader = DirectDownloader(fetch_service=mock_service)
+
+        with pytest.raises(RuntimeError, match="connection lost"):
+            await downloader.download(
+                "https://example.com/hello.txt",
+                output_dir=str(tmp_path),
+                overwrite=True,
+            )
+
+        assert destination.read_bytes() == b"original"
+        assert list(tmp_path.glob("*.part")) == []
+
+    @pytest.mark.asyncio
     async def test_direct_downloader_download_uses_temp_dir_when_no_output_dir(self):
         """When no output_dir is given, a temp directory should be used."""
         chunk = MagicMock()

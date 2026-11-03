@@ -9,12 +9,43 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import mimetypes
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from pyfetcher.downloaders.base import DownloadProgress, DownloadResult, MediaInfo
+from pyfetcher.media import MediaMetadata, ThumbnailInfo, media_kind
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _thumbnail_info(value: dict[str, Any]) -> ThumbnailInfo | None:
+    url = value.get("url")
+    if not url:
+        return None
+    width = value.get("width")
+    height = value.get("height")
+    dimensions = None
+    if isinstance(width, int) and width > 0 and isinstance(height, int) and height > 0:
+        from pyfetcher.media import PixelDimensions
+
+        dimensions = PixelDimensions(width=width, height=height)
+    return ThumbnailInfo(
+        id=str(value.get("id")) if value.get("id") is not None else None,
+        url=str(url),
+        dimensions=dimensions,
+        extension=value.get("ext"),
+        file_size_bytes=value.get("filesize") or value.get("filesize_approx"),
+        preference=value.get("preference"),
+    )
 
 
 class YtdlpDownloader:
@@ -28,10 +59,12 @@ class YtdlpDownloader:
         extra_opts: Additional yt-dlp options dict.
     """
 
+    DEFAULT_FORMAT = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+
     def __init__(
         self,
         *,
-        format_spec: str = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        format_spec: str = DEFAULT_FORMAT,
         extra_opts: dict[str, Any] | None = None,
     ) -> None:
         self._format = format_spec
@@ -47,6 +80,12 @@ class YtdlpDownloader:
         if progress_callback:
 
             def _hook(d: dict) -> None:
+                percent_value = d.get("_percent_str")
+                if isinstance(percent_value, str):
+                    try:
+                        percent_value = float(percent_value.strip().rstrip("%"))
+                    except ValueError:
+                        percent_value = None
                 progress_callback(
                     DownloadProgress(
                         status=d.get("status", "unknown"),
@@ -55,7 +94,7 @@ class YtdlpDownloader:
                         speed_bytes_per_sec=d.get("speed"),
                         eta_seconds=d.get("eta"),
                         filename=d.get("filename"),
-                        percent=d.get("_percent_str"),
+                        percent=percent_value,
                     )
                 )
 
@@ -86,11 +125,17 @@ class YtdlpDownloader:
         def _extract() -> dict:
             from yt_dlp import YoutubeDL  # type: ignore[import-untyped]
 
-            with YoutubeDL({"quiet": True, "no_warnings": True, "extract_flat": False}) as ydl:
+            opts = self._build_opts(".")
+            opts.update({"skip_download": True, "simulate": True})
+            with YoutubeDL(opts) as ydl:
                 return ydl.extract_info(url, download=False) or {}
 
         info = await asyncio.to_thread(_extract)
         return self._info_to_media_list(info)
+
+    async def extract_metadata(self, url: str) -> list[MediaMetadata]:
+        """Extract canonical media and thumbnail metadata without downloading."""
+        return [item.to_metadata() for item in await self.extract_info(url)]
 
     async def download(
         self,
@@ -132,6 +177,21 @@ class YtdlpDownloader:
         for entry in entries:
             if not entry:
                 continue
+            thumbnails = tuple(
+                thumbnail
+                for value in entry.get("thumbnails") or ()
+                if isinstance(value, dict) and (thumbnail := _thumbnail_info(value)) is not None
+            )
+            if not thumbnails and entry.get("thumbnail"):
+                thumbnails = (ThumbnailInfo(url=str(entry["thumbnail"])),)
+            extension = entry.get("ext")
+            mime_type = mimetypes.guess_type(f"item.{extension}")[0] if extension else None
+            if entry.get("vcodec") == "none" and entry.get("acodec") != "none":
+                kind = "audio"
+            elif entry.get("vcodec") not in {None, "none"}:
+                kind = "video"
+            else:
+                kind = media_kind(mime_type=mime_type, extension=extension)
             results.append(
                 MediaInfo(
                     url=entry.get("webpage_url") or entry.get("url", ""),
@@ -142,7 +202,14 @@ class YtdlpDownloader:
                     uploader=entry.get("uploader"),
                     upload_date=entry.get("upload_date"),
                     file_size_bytes=entry.get("filesize") or entry.get("filesize_approx"),
+                    mime_type=mime_type,
                     ext=entry.get("ext"),
+                    kind=kind,
+                    width=entry.get("width"),
+                    height=entry.get("height"),
+                    thumbnails=thumbnails,
+                    provider="yt_dlp",
+                    extractor=entry.get("extractor_key") or entry.get("extractor"),
                     extra={
                         k: v
                         for k, v in entry.items()
@@ -155,6 +222,9 @@ class YtdlpDownloader:
                             "tags",
                             "format",
                             "format_id",
+                            "extractor",
+                            "extractor_key",
+                            "webpage_url_domain",
                         )
                         and v is not None
                     },
@@ -166,7 +236,6 @@ class YtdlpDownloader:
         """Convert yt-dlp info_dict to DownloadResult list after download."""
         entries = info.get("entries", [info]) if "entries" in info else [info]
         results = []
-        Path(output_dir)
         for entry in entries:
             if not entry:
                 continue
@@ -177,19 +246,31 @@ class YtdlpDownloader:
             if filepath:
                 fp = Path(filepath)
                 file_size = fp.stat().st_size if fp.exists() else None
-                sha256 = hashlib.sha256(fp.read_bytes()).hexdigest() if fp.exists() else None
+                sha256 = _sha256(fp) if fp.exists() else None
             else:
                 file_size = None
                 sha256 = None
             media_info_list = self._info_to_media_list({"entries": [entry]})
+            normalized = media_info_list[0].to_metadata() if media_info_list else None
+            if normalized is not None:
+                normalized = normalized.model_copy(
+                    update={
+                        "path": filepath,
+                        "filename": Path(filepath).name if filepath else None,
+                        "file_size_bytes": file_size,
+                        "checksum_sha256": sha256,
+                    }
+                )
             results.append(
                 DownloadResult(
                     source_url=entry.get("webpage_url") or entry.get("url", ""),
                     local_path=filepath,
                     filename=Path(filepath).name if filepath else None,
                     file_size_bytes=file_size,
+                    mime_type=(media_info_list[0].mime_type if media_info_list else None),
                     checksum_sha256=sha256,
                     media_info=media_info_list[0] if media_info_list else None,
+                    normalized_metadata=normalized,
                 )
             )
         return results

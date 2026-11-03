@@ -8,7 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from pyfetcher.acquisition.models import AcquisitionProvenance, AcquisitionResult
 from pyfetcher.db.models.job import Job
+from pyfetcher.downloaders.base import DownloadResult
+from pyfetcher.pipeline.download_stage import DownloadStage
 from pyfetcher.pipeline.stage import PipelineStage
 
 
@@ -67,6 +70,15 @@ class TestPipelineStageInit:
             concurrency=20,
         )
         assert stage._concurrency == 20
+
+    @pytest.mark.parametrize("concurrency", [0, -1])
+    def test_pipeline_stage_rejects_invalid_concurrency(self, concurrency):
+        with pytest.raises(ValueError, match="concurrency"):
+            ConcretePipelineStage(
+                session_factory=MagicMock(),
+                job_type="scrape",
+                concurrency=concurrency,
+            )
 
     def test_pipeline_stage_stop(self):
         mock_sf = MagicMock()
@@ -212,6 +224,8 @@ class TestPipelineStageRunLoop:
             session_factory=mock_sf,
             job_type="crawl",
             process_fn=process_fn,
+            concurrency=1,
+            poll_interval=0.01,
         )
 
         # Patch claim_job to return the job once, then None, and stop the loop
@@ -239,3 +253,122 @@ class TestPipelineStageRunLoop:
 
             # complete_job should have been called for the processed job
             mock_complete.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_pipeline_stage_processes_jobs_concurrently(self):
+        """Configured slots claim and process independent jobs concurrently."""
+        import asyncio
+
+        jobs = [
+            Job(id=uuid.uuid4(), type="crawl", url=f"https://example.com/{index}")
+            for index in range(2)
+        ]
+        claimed = iter(jobs)
+        both_started = asyncio.Event()
+        release = asyncio.Event()
+        active = 0
+        max_active = 0
+
+        async def claim(*_args):
+            return next(claimed, None)
+
+        async def process_fn(_job, _session):
+            nonlocal active, max_active
+            active += 1
+            max_active = max(max_active, active)
+            if active == 2:
+                both_started.set()
+            await release.wait()
+            active -= 1
+            return {"status": "ok"}
+
+        def session_context():
+            session = AsyncMock()
+            context = AsyncMock()
+            context.__aenter__ = AsyncMock(return_value=session)
+            context.__aexit__ = AsyncMock(return_value=False)
+            return context
+
+        stage = ConcretePipelineStage(
+            session_factory=MagicMock(side_effect=session_context),
+            job_type="crawl",
+            process_fn=process_fn,
+            concurrency=2,
+            poll_interval=0.01,
+        )
+
+        with (
+            patch("pyfetcher.pipeline.stage.claim_job", side_effect=claim),
+            patch("pyfetcher.pipeline.stage.complete_job", new_callable=AsyncMock),
+            patch("pyfetcher.pipeline.stage.fail_job", new_callable=AsyncMock),
+        ):
+            task = asyncio.create_task(stage.run())
+            await asyncio.wait_for(both_started.wait(), timeout=1)
+            stage.stop()
+            release.set()
+            await asyncio.wait_for(task, timeout=1)
+
+        assert max_active == 2
+
+
+class TestDownloadStageAcquisition:
+    @pytest.mark.asyncio
+    async def test_persists_every_acquired_item(self):
+        downloads = (
+            DownloadResult(
+                source_url="https://example.com/one.jpg",
+                local_path="/tmp/one.jpg",
+                filename="one.jpg",
+                mime_type="image/jpeg",
+                file_size_bytes=10,
+            ),
+            DownloadResult(
+                source_url="https://example.com/two.jpg",
+                local_path="/tmp/two.jpg",
+                filename="two.jpg",
+                mime_type="image/jpeg",
+                file_size_bytes=20,
+            ),
+        )
+        acquisition = MagicMock()
+        acquisition.acquire = AsyncMock(
+            return_value=AcquisitionResult(
+                source_url="https://example.com/gallery",
+                operation="download",
+                provider="gallery_dl",
+                downloads=downloads,
+                provenance=AcquisitionProvenance(provider="gallery_dl"),
+            )
+        )
+        store = MagicMock(default_bucket="assets")
+        store.upload_file = AsyncMock()
+        session = MagicMock()
+
+        async def flush():
+            asset = session.add.call_args.args[0]
+            if asset.id is None:
+                asset.id = uuid.uuid4()
+
+        session.flush = AsyncMock(side_effect=flush)
+        stage = DownloadStage(
+            session_factory=MagicMock(),
+            acquisition_service=acquisition,
+            object_store=store,
+        )
+        job = Job(
+            id=uuid.uuid4(),
+            type="download",
+            url="https://example.com/gallery",
+            payload={"provider": "gallery_dl"},
+        )
+
+        result = await stage.process(job, session)
+
+        assert result is not None
+        assert result["provider"] == "gallery_dl"
+        assert len(result["asset_ids"]) == 2
+        assert len(result["items"]) == 2
+        assert session.add.call_count == 2
+        assert store.upload_file.await_count == 2
+        request = acquisition.acquire.await_args.args[0]
+        assert request.provider == "gallery_dl"

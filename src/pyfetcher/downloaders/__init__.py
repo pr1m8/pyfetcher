@@ -7,18 +7,30 @@ Purpose:
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from pyfetcher.downloaders.base import (
+    DownloaderItems,
+    DownloaderProtocol,
+    DownloaderResult,
+    DownloadProgress,
+    DownloadResult,
+    MediaInfo,
+    MetadataDownloaderProtocol,
+    ProgressCallback,
+)
+from pyfetcher.downloaders.direct import DirectDownloader
+from pyfetcher.downloaders.gallerydl import GalleryDlDownloader
+from pyfetcher.downloaders.ytdlp import YtdlpDownloader
 
-try:
-    from pyfetcher.downloaders.ytdlp import YtdlpDownloader  # noqa: F401
-except Exception:  # pragma: no cover  # nosec B110
-    pass
-else:
-    __all__.append("YtdlpDownloader")
-
-try:
-    from pyfetcher.downloaders.gallerydl import GalleryDlDownloader  # noqa: F401
-except Exception:  # pragma: no cover  # nosec B110
-    pass
-else:
-    __all__.append("GalleryDlDownloader")
+__all__ = [
+    "DirectDownloader",
+    "DownloadProgress",
+    "DownloadResult",
+    "DownloaderProtocol",
+    "DownloaderItems",
+    "DownloaderResult",
+    "GalleryDlDownloader",
+    "MediaInfo",
+    "MetadataDownloaderProtocol",
+    "ProgressCallback",
+    "YtdlpDownloader",
+]

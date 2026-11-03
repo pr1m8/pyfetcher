@@ -20,7 +20,7 @@ Examples:
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from typing import Protocol
 
 from pyfetcher.contracts.request import FetchRequest
@@ -44,6 +44,14 @@ class SyncTransport(Protocol):
         Returns:
             A normalized fetch response.
         """
+        ...
+
+
+class SyncStreamingTransport(SyncTransport, Protocol):
+    """Protocol for synchronous transports that also stream responses."""
+
+    def stream(self, request: FetchRequest) -> Iterator[StreamChunk]:
+        """Stream a request as normalized chunks."""
         ...
 
 

@@ -27,6 +27,7 @@ import aiohttp
 
 from pyfetcher.contracts.request import FetchRequest
 from pyfetcher.contracts.response import FetchResponse, StreamChunk
+from pyfetcher.transports.content import get_request_content, prepare_async_content
 
 
 class AiohttpTransport:
@@ -121,14 +122,16 @@ class AiohttpTransport:
             request.url.unicode_string(),
             params=request.params,
             headers=request.headers,
-            data=request.data,
+            data=prepare_async_content(get_request_content(request)),
             json=request.json_data,
             allow_redirects=request.allow_redirects,
             ssl=request.verify_ssl,
+            proxy=request.proxy,
         ) as response:
             body = await response.read()
             elapsed_ms = (perf_counter() - start) * 1000.0
-            response.raise_for_status()
+            if response.status not in request.retry.retry_status_codes:
+                response.raise_for_status()
             return FetchResponse(
                 request_url=request.url.unicode_string(),
                 final_url=str(response.url),
@@ -138,6 +141,7 @@ class AiohttpTransport:
                 text=body.decode(response.charset or "utf-8", errors="replace"),
                 body=body,
                 backend="aiohttp",
+                http_version=f"HTTP/{response.version.major}.{response.version.minor}",
                 elapsed_ms=elapsed_ms,
             )
 
@@ -161,10 +165,11 @@ class AiohttpTransport:
             request.url.unicode_string(),
             params=request.params,
             headers=request.headers,
-            data=request.data,
+            data=prepare_async_content(get_request_content(request)),
             json=request.json_data,
             allow_redirects=request.allow_redirects,
             ssl=request.verify_ssl,
+            proxy=request.proxy,
         ) as response:
             response.raise_for_status()
             index = 0
@@ -175,6 +180,7 @@ class AiohttpTransport:
                     backend="aiohttp",
                     index=index,
                     data=chunk,
+                    http_version=f"HTTP/{response.version.major}.{response.version.minor}",
                 )
                 index += 1
 

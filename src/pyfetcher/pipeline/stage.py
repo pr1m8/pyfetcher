@@ -41,11 +41,17 @@ class PipelineStage(ABC):
         job_type: str,
         worker_id: str | None = None,
         concurrency: int = 5,
+        poll_interval: float = 0.5,
     ) -> None:
+        if concurrency < 1:
+            raise ValueError("concurrency must be at least 1")
+        if poll_interval <= 0:
+            raise ValueError("poll_interval must be greater than 0")
         self._session_factory = session_factory
         self._job_type = job_type
         self._worker_id = worker_id or f"{job_type}-{uuid.uuid4().hex[:8]}"
         self._concurrency = concurrency
+        self._poll_interval = poll_interval
         self._running = False
 
     @abstractmethod
@@ -65,10 +71,11 @@ class PipelineStage(ABC):
         """Run the stage worker loop.
 
         Claims and processes jobs until :meth:`stop` is called.
-        Uses a semaphore to bound concurrency.
+        Starts one independent claim loop per configured concurrency slot.
         """
+        if self._running:
+            raise RuntimeError(f"{self._job_type} stage is already running")
         self._running = True
-        sem = asyncio.Semaphore(self._concurrency)
         logger.info(
             "Stage %s started (worker=%s, concurrency=%d)",
             self._job_type,
@@ -76,30 +83,60 @@ class PipelineStage(ABC):
             self._concurrency,
         )
 
-        while self._running:
-            async with sem:
-                async with self._session_factory() as session:
-                    job = await claim_job(session, self._job_type, self._worker_id)
-                    if job is None:
-                        await asyncio.sleep(0.5)
-                        continue
+        workers = [
+            asyncio.create_task(
+                self._run_worker(slot),
+                name=f"pyfetcher:{self._job_type}:{slot}",
+            )
+            for slot in range(self._concurrency)
+        ]
+        try:
+            await asyncio.gather(*workers)
+        finally:
+            self._running = False
+            for worker in workers:
+                if not worker.done():
+                    worker.cancel()
+            await asyncio.gather(*workers, return_exceptions=True)
 
+    async def _run_worker(self, slot: int) -> None:
+        """Claim and process jobs for one concurrency slot."""
+        worker_id = f"{self._worker_id}:{slot + 1}"
+        while self._running:
+            async with self._session_factory() as session:
+                job = await claim_job(session, self._job_type, worker_id)
+                if job is not None:
                     job.state = "running"
                     job.started_at = job.claimed_at
                     await session.commit()
 
-                try:
-                    async with self._session_factory() as session:
-                        result = await self.process(job, session)
-                        await complete_job(session, job.id, result=result)
-                        await session.commit()
-                        logger.info("Job %s completed", job.id)
-                except Exception as exc:
-                    async with self._session_factory() as session:
-                        await fail_job(session, job.id, error=str(exc))
-                        await session.commit()
-                    logger.warning("Job %s failed: %s", job.id, exc)
+            if job is None:
+                await asyncio.sleep(self._poll_interval)
+                continue
+
+            try:
+                async with self._session_factory() as session:
+                    result = await self.process(job, session)
+                    await complete_job(session, job.id, result=result)
+                    await session.commit()
+                    logger.info("Job %s completed", job.id)
+            except Exception as exc:
+                async with self._session_factory() as session:
+                    await fail_job(session, job.id, error=str(exc))
+                    await session.commit()
+                logger.warning("Job %s failed: %s", job.id, exc)
 
     def stop(self) -> None:
         """Signal the worker to stop after current jobs complete."""
         self._running = False
+
+    async def aclose(self) -> None:
+        """Close resources owned by the stage."""
+        return None
+
+    async def __aenter__(self) -> PipelineStage:
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        self.stop()
+        await self.aclose()

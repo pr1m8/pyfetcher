@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 
 from pyfetcher.contracts.request import FetchRequest
 from pyfetcher.contracts.response import FetchResponse
+from pyfetcher.transports.content import get_request_content, prepare_sync_content
 
 if TYPE_CHECKING:
     import cloudscraper
@@ -94,19 +95,24 @@ class CloudscraperTransport:
         """
         scraper = self._get_scraper()
         start = perf_counter()
+        proxies = (
+            {"http": request.proxy, "https": request.proxy} if request.proxy is not None else None
+        )
         response = scraper.request(
             request.method,
             request.url.unicode_string(),
             params=request.params or None,
             headers=request.headers or None,
-            data=request.data,
+            data=prepare_sync_content(get_request_content(request)),
             json=request.json_data,
             allow_redirects=request.allow_redirects,
             verify=request.verify_ssl,
             timeout=request.timeout.total_seconds,
+            proxies=proxies,
         )
         elapsed_ms = (perf_counter() - start) * 1000.0
-        response.raise_for_status()
+        if response.status_code not in request.retry.retry_status_codes:
+            response.raise_for_status()
         return FetchResponse(
             request_url=request.url.unicode_string(),
             final_url=str(response.url),

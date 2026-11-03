@@ -125,6 +125,35 @@ async def test_httpx_transport_aclose_with_client():
     assert transport._async_client is None
 
 
+async def test_httpx_transport_separates_http2_and_http1_pools():
+    transport = HttpxTransport()
+    http2_client = transport._get_async_client(FetchRequest(url="https://example.com", http2=True))
+    same_http2_client = transport._get_async_client(
+        FetchRequest(url="https://example.org", http2=True)
+    )
+    http1_client = transport._get_async_client(FetchRequest(url="https://example.com", http2=False))
+
+    assert http2_client is same_http2_client
+    assert http1_client is not http2_client
+    assert len(transport._async_clients) == 2
+    await transport.aclose()
+
+
+async def test_httpx_transport_separates_proxy_pools():
+    transport = HttpxTransport()
+    direct_client = transport._get_async_client(FetchRequest(url="https://example.com"))
+    proxy_client = transport._get_async_client(
+        FetchRequest(
+            url="https://example.com",
+            proxy="http://proxy.example:8080",
+        )
+    )
+
+    assert proxy_client is not direct_client
+    assert len(transport._async_clients) == 2
+    await transport.aclose()
+
+
 def test_httpx_transport_does_not_close_external_client():
     """External clients should NOT be closed by the transport."""
     sync_client = httpx.Client()

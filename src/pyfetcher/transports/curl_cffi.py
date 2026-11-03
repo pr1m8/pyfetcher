@@ -29,6 +29,11 @@ from time import perf_counter
 
 from pyfetcher.contracts.request import FetchRequest
 from pyfetcher.contracts.response import FetchResponse, StreamChunk
+from pyfetcher.transports.content import (
+    get_request_content,
+    prepare_async_content,
+    prepare_sync_content,
+)
 
 #: Supported curl_cffi browser impersonation targets.
 CURL_CFFI_TARGETS: list[str] = [
@@ -144,14 +149,16 @@ class CurlCffiTransport:
             request.url.unicode_string(),
             params=request.params or None,
             headers=request.headers or None,
-            data=request.data,
+            data=prepare_sync_content(get_request_content(request)),
             json=request.json_data,
             allow_redirects=request.allow_redirects,
             verify=request.verify_ssl,
             timeout=request.timeout.total_seconds,
+            proxy=request.proxy,
         )
         elapsed_ms = (perf_counter() - start) * 1000.0
-        response.raise_for_status()
+        if response.status_code not in request.retry.retry_status_codes:
+            response.raise_for_status()
         return FetchResponse(
             request_url=request.url.unicode_string(),
             final_url=str(response.url),
@@ -183,14 +190,16 @@ class CurlCffiTransport:
             request.url.unicode_string(),
             params=request.params or None,
             headers=request.headers or None,
-            data=request.data,
+            data=prepare_async_content(get_request_content(request)),
             json=request.json_data,
             allow_redirects=request.allow_redirects,
             verify=request.verify_ssl,
             timeout=request.timeout.total_seconds,
+            proxy=request.proxy,
         )
         elapsed_ms = (perf_counter() - start) * 1000.0
-        response.raise_for_status()
+        if response.status_code not in request.retry.retry_status_codes:
+            response.raise_for_status()
         return FetchResponse(
             request_url=request.url.unicode_string(),
             final_url=str(response.url),
@@ -221,11 +230,12 @@ class CurlCffiTransport:
             request.url.unicode_string(),
             params=request.params or None,
             headers=request.headers or None,
-            data=request.data,
+            data=prepare_async_content(get_request_content(request)),
             json=request.json_data,
             allow_redirects=request.allow_redirects,
             verify=request.verify_ssl,
             timeout=request.timeout.total_seconds,
+            proxy=request.proxy,
             stream=True,
         )
         response.raise_for_status()

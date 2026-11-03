@@ -39,8 +39,14 @@ class CrawlStage(PipelineStage):
         **kwargs: object,
     ) -> None:
         super().__init__(job_type="crawl", **kwargs)  # type: ignore[arg-type]
+        self._owns_fetch_service = fetch_service is None
         self._fetch = fetch_service or FetchService()
         self._frontier = frontier or Frontier()
+
+    async def aclose(self) -> None:
+        """Close the fetch service when this stage created it."""
+        if self._owns_fetch_service:
+            await self._fetch.aclose()
 
     async def process(self, job: Job, session: AsyncSession) -> dict | None:
         """Fetch a URL, store the page, discover links, create scrape job."""

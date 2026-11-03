@@ -46,6 +46,8 @@ class FetchResponse(BaseModel):
         text: Decoded text body when fully loaded.
         body: Raw bytes body when available.
         backend: Name of the backend that executed the request.
+        http_version: Negotiated HTTP protocol version when exposed by the
+            selected backend (for example, ``"HTTP/2"``).
         elapsed_ms: Total elapsed time in milliseconds.
 
     Examples:
@@ -73,6 +75,7 @@ class FetchResponse(BaseModel):
     text: str | None = None
     body: bytes | None = None
     backend: BackendKind
+    http_version: str | None = None
     elapsed_ms: float
 
     @computed_field
@@ -111,6 +114,7 @@ class StreamChunk(BaseModel):
         backend: Backend that produced this chunk.
         index: Zero-based chunk index within the stream.
         data: Raw bytes payload for this chunk.
+        http_version: Negotiated HTTP protocol version when available.
 
     Examples:
         ::
@@ -132,6 +136,7 @@ class StreamChunk(BaseModel):
     backend: BackendKind
     index: int
     data: bytes
+    http_version: str | None = None
 
 
 class BatchItemResponse(BaseModel):

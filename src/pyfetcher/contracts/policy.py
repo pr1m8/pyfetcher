@@ -19,7 +19,7 @@ Examples:
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class RetryPolicy(BaseModel):
@@ -54,6 +54,11 @@ class RetryPolicy(BaseModel):
     )
     retry_on_connection_errors: bool = True
     reraise: bool = True
+
+    @field_serializer("retry_status_codes")
+    def _serialize_retry_status_codes(self, value: set[int]) -> list[int]:
+        """Keep JSON output stable across Python hash seeds."""
+        return sorted(value)
 
 
 class TimeoutPolicy(BaseModel):

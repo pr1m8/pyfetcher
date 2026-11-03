@@ -618,13 +618,14 @@ class TestResources:
         assert "aiohttp" in backend_names
 
     def test_resource_version(self) -> None:
+        from pyfetcher import __version__
         from pyfetcher.mcp.server import resource_version
 
         result = resource_version()
         data = json.loads(result)
         assert data["name"] == "fetchkit"
         assert data["import_name"] == "pyfetcher"
-        assert data["version"] == "0.2.0"
+        assert data["version"] == __version__
         assert data["tools"] == 16
         assert data["resources"] == 4
         assert data["prompts"] == 4

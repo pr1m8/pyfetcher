@@ -9,12 +9,25 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import mimetypes
 import tempfile
+import threading
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from pyfetcher.downloaders.base import DownloadProgress, DownloadResult, MediaInfo
+from pyfetcher.media import MediaMetadata, media_kind
+
+_GALLERY_DL_CONFIG_LOCK = threading.Lock()
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 class GalleryDlDownloader:
@@ -30,6 +43,12 @@ class GalleryDlDownloader:
     def __init__(self, *, extra_config: dict[str, Any] | None = None) -> None:
         self._extra_config = extra_config or {}
 
+    def _apply_config(self, config_module: Any) -> None:
+        """Apply provider-native top-level gallery-dl configuration."""
+        config_module.clear()
+        for key, value in self._extra_config.items():
+            config_module.set((), key, value)
+
     async def extract_info(self, url: str) -> list[MediaInfo]:
         """Extract metadata for all downloadable items without downloading.
 
@@ -44,9 +63,6 @@ class GalleryDlDownloader:
             from gallery_dl import config as gdl_config  # type: ignore[import-untyped]
             from gallery_dl.job import DataJob  # type: ignore[import-untyped]
 
-            gdl_config.clear()
-            gdl_config.set((), "extractor", self._extra_config.get("extractor", {}))
-
             items: list[dict] = []
 
             class CollectorJob(DataJob):
@@ -56,24 +72,41 @@ class GalleryDlDownloader:
                             _, url_str, kwdict = msg
                             items.append({"url": url_str, **kwdict})
 
-            try:
+            with _GALLERY_DL_CONFIG_LOCK:
+                self._apply_config(gdl_config)
                 job = CollectorJob(url)
                 job.run()
-            except Exception:
-                pass
             return items
 
         raw_items = await asyncio.to_thread(_extract)
-        return [
-            MediaInfo(
-                url=item.get("url", ""),
-                title=item.get("description") or item.get("title"),
-                ext=item.get("extension"),
-                file_size_bytes=item.get("filesize"),
-                extra={k: v for k, v in item.items() if k not in ("url",) and v is not None},
+        results: list[MediaInfo] = []
+        for item in raw_items:
+            extension = item.get("extension")
+            mime_type = mimetypes.guess_type(f"item.{extension}")[0] if extension else None
+            results.append(
+                MediaInfo(
+                    url=item.get("url", ""),
+                    title=item.get("description") or item.get("title"),
+                    ext=extension,
+                    file_size_bytes=item.get("filesize"),
+                    mime_type=mime_type,
+                    kind=media_kind(mime_type=mime_type, extension=extension),
+                    width=item.get("width"),
+                    height=item.get("height"),
+                    provider="gallery_dl",
+                    extractor=item.get("category") or item.get("subcategory"),
+                    extra={
+                        key: value
+                        for key, value in item.items()
+                        if key != "url" and value is not None
+                    },
+                )
             )
-            for item in raw_items
-        ]
+        return results
+
+    async def extract_metadata(self, url: str) -> list[MediaMetadata]:
+        """Extract canonical gallery item metadata without downloading."""
+        return [item.to_metadata() for item in await self.extract_info(url)]
 
     async def download(
         self,
@@ -101,17 +134,15 @@ class GalleryDlDownloader:
             import gallery_dl  # type: ignore[import-untyped]
             from gallery_dl import config as gdl_config  # type: ignore[import-untyped]
 
-            gdl_config.clear()
-            gdl_config.set((), "base-directory", output_dir)
-            gdl_config.set((), "directory", [])
-            if self._extra_config:
-                for key, val in self._extra_config.items():
-                    gdl_config.set((), key, val)
+            with _GALLERY_DL_CONFIG_LOCK:
+                self._apply_config(gdl_config)
+                gdl_config.set((), "base-directory", output_dir)
+                gdl_config.set((), "directory", [])
 
-            gallery_dl.main([url])
+                gallery_dl.main([url])
 
-            # Collect all downloaded files
-            return [str(p) for p in Path(output_dir).rglob("*") if p.is_file()]
+                # Collect all downloaded files while the global configuration is stable.
+                return [str(p) for p in Path(output_dir).rglob("*") if p.is_file()]
 
         downloaded_files = await asyncio.to_thread(_download)
 
@@ -119,7 +150,26 @@ class GalleryDlDownloader:
         for filepath in downloaded_files:
             fp = Path(filepath)
             file_size = fp.stat().st_size
-            sha256 = hashlib.sha256(fp.read_bytes()).hexdigest()
+            sha256 = _sha256(fp)
+            mime_type = mimetypes.guess_type(fp.name)[0]
+            metadata = (
+                MediaInfo(
+                    url=url,
+                    file_size_bytes=file_size,
+                    mime_type=mime_type,
+                    ext=fp.suffix.lstrip(".") or None,
+                    provider="gallery_dl",
+                    extractor="download",
+                )
+                .to_metadata()
+                .model_copy(
+                    update={
+                        "path": filepath,
+                        "filename": fp.name,
+                        "checksum_sha256": sha256,
+                    }
+                )
+            )
             if progress_callback:
                 progress_callback(
                     DownloadProgress(
@@ -135,7 +185,9 @@ class GalleryDlDownloader:
                     local_path=filepath,
                     filename=fp.name,
                     file_size_bytes=file_size,
+                    mime_type=mime_type,
                     checksum_sha256=sha256,
+                    normalized_metadata=metadata,
                 )
             )
         return results

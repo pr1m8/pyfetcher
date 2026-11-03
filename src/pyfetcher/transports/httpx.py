@@ -22,7 +22,7 @@ Examples:
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from time import perf_counter
 
 import httpx
@@ -30,6 +30,13 @@ import httpx
 from pyfetcher.contracts.policy import PoolPolicy, TimeoutPolicy
 from pyfetcher.contracts.request import FetchRequest
 from pyfetcher.contracts.response import FetchResponse, StreamChunk
+from pyfetcher.transports.content import (
+    get_request_content,
+    prepare_async_content,
+    prepare_sync_content,
+)
+
+type _PoolKey = tuple[int, int, float, int, bool, bool, str | None]
 
 
 def _build_timeout(timeout: TimeoutPolicy) -> httpx.Timeout:
@@ -107,6 +114,21 @@ class HttpxTransport:
         self._async_client = async_client
         self._owns_sync_client = sync_client is None
         self._owns_async_client = async_client is None
+        self._sync_clients: dict[_PoolKey, httpx.Client] = {}
+        self._async_clients: dict[_PoolKey, httpx.AsyncClient] = {}
+
+    @staticmethod
+    def _pool_key(request: FetchRequest) -> _PoolKey:
+        """Return the settings that define one reusable connection pool."""
+        return (
+            request.pool.max_connections,
+            request.pool.max_keepalive_connections,
+            request.pool.keepalive_expiry_seconds,
+            request.pool.max_connections_per_host,
+            request.verify_ssl,
+            request.http2,
+            request.proxy,
+        )
 
     def _get_sync_client(self, request: FetchRequest) -> httpx.Client:
         """Get or lazily create the synchronous HTTPX client.
@@ -117,15 +139,24 @@ class HttpxTransport:
         Returns:
             A configured ``httpx.Client`` instance.
         """
-        if self._sync_client is None:
-            self._sync_client = httpx.Client(
+        if not self._owns_sync_client:
+            assert self._sync_client is not None
+            return self._sync_client
+
+        key = self._pool_key(request)
+        client = self._sync_clients.get(key)
+        if client is None:
+            client = httpx.Client(
                 timeout=_build_timeout(request.timeout),
                 limits=_build_limits(request.pool),
                 follow_redirects=request.allow_redirects,
                 verify=request.verify_ssl,
                 http2=request.http2,
+                proxy=request.proxy,
             )
-        return self._sync_client
+            self._sync_clients[key] = client
+            self._sync_client = client
+        return client
 
     def _get_async_client(self, request: FetchRequest) -> httpx.AsyncClient:
         """Get or lazily create the asynchronous HTTPX client.
@@ -136,15 +167,24 @@ class HttpxTransport:
         Returns:
             A configured ``httpx.AsyncClient`` instance.
         """
-        if self._async_client is None:
-            self._async_client = httpx.AsyncClient(
+        if not self._owns_async_client:
+            assert self._async_client is not None
+            return self._async_client
+
+        key = self._pool_key(request)
+        client = self._async_clients.get(key)
+        if client is None:
+            client = httpx.AsyncClient(
                 timeout=_build_timeout(request.timeout),
                 limits=_build_limits(request.pool),
                 follow_redirects=request.allow_redirects,
                 verify=request.verify_ssl,
                 http2=request.http2,
+                proxy=request.proxy,
             )
-        return self._async_client
+            self._async_clients[key] = client
+            self._async_client = client
+        return client
 
     def fetch(self, request: FetchRequest) -> FetchResponse:
         """Fetch a request synchronously.
@@ -165,11 +205,14 @@ class HttpxTransport:
             request.url.unicode_string(),
             params=request.params,
             headers=request.headers,
-            content=request.data,
+            content=prepare_sync_content(get_request_content(request)),
             json=request.json_data,
+            follow_redirects=request.allow_redirects,
+            timeout=_build_timeout(request.timeout),
         )
         elapsed_ms = (perf_counter() - start) * 1000.0
-        response.raise_for_status()
+        if response.status_code not in request.retry.retry_status_codes:
+            response.raise_for_status()
         return FetchResponse(
             request_url=request.url.unicode_string(),
             final_url=str(response.url),
@@ -179,6 +222,7 @@ class HttpxTransport:
             text=response.text,
             body=response.content,
             backend="httpx",
+            http_version=response.http_version,
             elapsed_ms=elapsed_ms,
         )
 
@@ -201,11 +245,14 @@ class HttpxTransport:
             request.url.unicode_string(),
             params=request.params,
             headers=request.headers,
-            content=request.data,
+            content=prepare_async_content(get_request_content(request)),
             json=request.json_data,
+            follow_redirects=request.allow_redirects,
+            timeout=_build_timeout(request.timeout),
         )
         elapsed_ms = (perf_counter() - start) * 1000.0
-        response.raise_for_status()
+        if response.status_code not in request.retry.retry_status_codes:
+            response.raise_for_status()
         return FetchResponse(
             request_url=request.url.unicode_string(),
             final_url=str(response.url),
@@ -215,8 +262,35 @@ class HttpxTransport:
             text=response.text,
             body=response.content,
             backend="httpx",
+            http_version=response.http_version,
             elapsed_ms=elapsed_ms,
         )
+
+    def stream(self, request: FetchRequest) -> Iterator[StreamChunk]:
+        """Stream a request synchronously without buffering its response body."""
+        client = self._get_sync_client(request)
+        with client.stream(
+            request.method,
+            request.url.unicode_string(),
+            params=request.params,
+            headers=request.headers,
+            content=prepare_sync_content(get_request_content(request)),
+            json=request.json_data,
+            follow_redirects=request.allow_redirects,
+            timeout=_build_timeout(request.timeout),
+        ) as response:
+            response.raise_for_status()
+            for index, chunk in enumerate(
+                response.iter_bytes(chunk_size=request.stream.chunk_size)
+            ):
+                yield StreamChunk(
+                    request_url=request.url.unicode_string(),
+                    final_url=str(response.url),
+                    backend="httpx",
+                    index=index,
+                    data=chunk,
+                    http_version=response.http_version,
+                )
 
     async def astream(self, request: FetchRequest) -> AsyncIterator[StreamChunk]:
         """Stream a request asynchronously.
@@ -239,8 +313,10 @@ class HttpxTransport:
             request.url.unicode_string(),
             params=request.params,
             headers=request.headers,
-            content=request.data,
+            content=prepare_async_content(get_request_content(request)),
             json=request.json_data,
+            follow_redirects=request.allow_redirects,
+            timeout=_build_timeout(request.timeout),
         ) as response:
             response.raise_for_status()
             index = 0
@@ -251,6 +327,7 @@ class HttpxTransport:
                     backend="httpx",
                     index=index,
                     data=chunk,
+                    http_version=response.http_version,
                 )
                 index += 1
 
@@ -260,8 +337,10 @@ class HttpxTransport:
         Only closes clients that were created internally (not externally
         provided via the constructor).
         """
-        if self._owns_sync_client and self._sync_client is not None:
-            self._sync_client.close()
+        if self._owns_sync_client:
+            for client in self._sync_clients.values():
+                client.close()
+            self._sync_clients.clear()
             self._sync_client = None
 
     async def aclose(self) -> None:
@@ -270,6 +349,8 @@ class HttpxTransport:
         Only closes clients that were created internally (not externally
         provided via the constructor).
         """
-        if self._owns_async_client and self._async_client is not None:
-            await self._async_client.aclose()
+        if self._owns_async_client:
+            for client in self._async_clients.values():
+                await client.aclose()
+            self._async_clients.clear()
             self._async_client = None

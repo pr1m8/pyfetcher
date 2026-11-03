@@ -70,6 +70,10 @@ class TestRetryPolicy:
         assert policy.attempts == 5
         assert policy.wait_max_seconds == 16.0
 
+    def test_json_serialization_sorts_status_codes(self) -> None:
+        policy = RetryPolicy(retry_status_codes={503, 429, 500})
+        assert policy.model_dump(mode="json")["retry_status_codes"] == [429, 500, 503]
+
     def test_frozen(self) -> None:
         policy = RetryPolicy()
         with pytest.raises(ValidationError):
@@ -125,6 +129,43 @@ class TestFetchRequest:
             params={"key": "value"},
         )
         assert request.params["key"] == "value"
+
+    def test_request_accepts_registered_backend_name(self) -> None:
+        request = FetchRequest(url="https://example.com", backend="scrapy")
+        assert request.backend == "scrapy"
+
+    def test_request_accepts_proxy(self) -> None:
+        request = FetchRequest(
+            url="https://example.com",
+            proxy="http://proxy.example:8080",
+        )
+        assert request.proxy == "http://proxy.example:8080"
+
+    def test_request_rejects_invalid_proxy(self) -> None:
+        with pytest.raises(ValidationError, match=r"absolute HTTP\(S\) URL"):
+            FetchRequest(url="https://example.com", proxy="proxy.example:8080")
+
+    def test_request_preserves_runtime_content_generator(self) -> None:
+        def content():
+            yield b"one"
+
+        generator = content()
+        request = FetchRequest(url="https://example.com", content=generator)
+        assert request.content is generator
+        assert "content" not in request.model_dump()
+
+    def test_request_content_factory_is_runtime_only(self) -> None:
+        request = FetchRequest(url="https://example.com", content_factory=lambda: [b"one"])
+        assert request.content_factory is not None
+        assert "content_factory" not in request.model_dump()
+
+    def test_request_rejects_non_callable_content_factory(self) -> None:
+        with pytest.raises(ValidationError, match="must be callable"):
+            FetchRequest(url="https://example.com", content_factory="nope")  # type: ignore[arg-type]
+
+    def test_request_rejects_multiple_body_sources(self) -> None:
+        with pytest.raises(ValidationError, match="mutually exclusive"):
+            FetchRequest(url="https://example.com", data=b"one", content=[b"two"])
 
 
 class TestBatchFetchRequest:

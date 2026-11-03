@@ -19,6 +19,7 @@ from typing import Annotated
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
+from pyfetcher import __version__
 from pyfetcher.mcp.models import (
     ArticleResult,
     DownloadResult,
@@ -36,7 +37,7 @@ from pyfetcher.mcp.models import (
     TableResult,
 )
 
-mcp = FastMCP("pyfetcher", version="0.2.0")
+mcp = FastMCP("pyfetcher", version=__version__)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -578,7 +579,7 @@ def resource_version() -> str:
         {
             "name": "fetchkit",
             "import_name": "pyfetcher",
-            "version": "0.2.0",
+            "version": __version__,
             "profiles": len(_list()),
             "backends": ["httpx", "aiohttp", "curl_cffi", "cloudscraper"],
             "tools": 16,

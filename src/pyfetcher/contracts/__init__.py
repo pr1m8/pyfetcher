@@ -31,19 +31,76 @@ from pyfetcher.contracts.policy import (
     StreamPolicy,
     TimeoutPolicy,
 )
-from pyfetcher.contracts.request import BatchFetchRequest, FetchRequest
+from pyfetcher.contracts.request import (
+    BackendKind,
+    BatchFetchRequest,
+    FetchRequest,
+    RequestContent,
+    RequestContentFactory,
+    RequestMethod,
+)
 from pyfetcher.contracts.response import BatchFetchResponse, FetchResponse, StreamChunk
-from pyfetcher.contracts.url import URL
+from pyfetcher.contracts.url import (
+    URL,
+    DomainParts,
+    SupportsDomainParts,
+    SupportsFinalURL,
+    SupportsGetFullURL,
+    SupportsGetURL,
+    SupportsToText,
+    SupportsUnsplit,
+    SupportsURL,
+    URLAdapterResolver,
+    URLInput,
+    UrllibURL,
+)
+from pyfetcher.contracts.url_adapters import (
+    URLAdapter,
+    URLAdapterRegistry,
+    URLRule,
+    apply_url_rules,
+)
+from pyfetcher.contracts.url_pattern import (
+    URLBuildError,
+    URLMatch,
+    URLPattern,
+    URLPatternError,
+    URLTemplate,
+)
 
 __all__ = [
     "BatchFetchRequest",
     "BatchFetchResponse",
+    "BackendKind",
+    "DomainParts",
     "FetchRequest",
     "FetchResponse",
     "PoolPolicy",
     "RetryPolicy",
+    "RequestContent",
+    "RequestContentFactory",
+    "RequestMethod",
     "StreamChunk",
     "StreamPolicy",
+    "SupportsDomainParts",
+    "SupportsFinalURL",
+    "SupportsGetFullURL",
+    "SupportsGetURL",
+    "SupportsToText",
+    "SupportsUnsplit",
+    "SupportsURL",
     "TimeoutPolicy",
     "URL",
+    "URLAdapter",
+    "URLAdapterResolver",
+    "URLAdapterRegistry",
+    "URLBuildError",
+    "URLMatch",
+    "URLInput",
+    "URLPattern",
+    "URLPatternError",
+    "URLTemplate",
+    "URLRule",
+    "UrllibURL",
+    "apply_url_rules",
 ]

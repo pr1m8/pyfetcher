@@ -9,6 +9,8 @@ Design:
     - Request dictionaries are validated through Pydantic models.
     - Advanced callers can still instantiate
       :class:`~pyfetcher.fetch.service.FetchService` directly.
+    - Long-running applications should prefer ``AsyncFetchClient`` so pool
+      cleanup is tied to application lifespan.
 
 Examples:
     ::
@@ -20,11 +22,12 @@ Examples:
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from functools import lru_cache
 
 from pyfetcher.contracts.request import BatchFetchRequest, FetchRequest
 from pyfetcher.contracts.response import BatchFetchResponse, FetchResponse, StreamChunk
+from pyfetcher.contracts.url import URLInput
 from pyfetcher.fetch.service import FetchService
 
 
@@ -44,7 +47,7 @@ def get_default_fetch_service() -> FetchService:
     return FetchService()
 
 
-def fetch(url: str | FetchRequest, /, **kwargs: object) -> FetchResponse:
+def fetch(url: URLInput | FetchRequest, /, **kwargs: object) -> FetchResponse:
     """Fetch a URL synchronously using the default service.
 
     Convenience function that creates a :class:`FetchRequest` from the
@@ -52,8 +55,8 @@ def fetch(url: str | FetchRequest, /, **kwargs: object) -> FetchResponse:
     the default :class:`FetchService`.
 
     Args:
-        url: URL string or pre-built :class:`FetchRequest`.
-        **kwargs: Additional request fields when ``url`` is a string.
+        url: URL-like value or pre-built :class:`FetchRequest`.
+        **kwargs: Additional request fields when ``url`` is a URL-like value.
 
     Returns:
         A normalized :class:`~pyfetcher.contracts.response.FetchResponse`.
@@ -71,7 +74,7 @@ def fetch(url: str | FetchRequest, /, **kwargs: object) -> FetchResponse:
     return get_default_fetch_service().fetch(request)
 
 
-async def afetch(url: str | FetchRequest, /, **kwargs: object) -> FetchResponse:
+async def afetch(url: URLInput | FetchRequest, /, **kwargs: object) -> FetchResponse:
     """Fetch a URL asynchronously using the default service.
 
     Convenience function that creates a :class:`FetchRequest` from the
@@ -79,8 +82,8 @@ async def afetch(url: str | FetchRequest, /, **kwargs: object) -> FetchResponse:
     the default :class:`FetchService`.
 
     Args:
-        url: URL string or pre-built :class:`FetchRequest`.
-        **kwargs: Additional request fields when ``url`` is a string.
+        url: URL-like value or pre-built :class:`FetchRequest`.
+        **kwargs: Additional request fields when ``url`` is a URL-like value.
 
     Returns:
         A normalized :class:`~pyfetcher.contracts.response.FetchResponse`.
@@ -133,14 +136,14 @@ async def afetch_many(
     return await get_default_fetch_service().afetch_many(batch)
 
 
-async def astream(url: str | FetchRequest, /, **kwargs: object) -> AsyncIterator[StreamChunk]:
+async def astream(url: URLInput | FetchRequest, /, **kwargs: object) -> AsyncIterator[StreamChunk]:
     """Stream a URL asynchronously using the default service.
 
     Convenience function for streaming responses as chunks.
 
     Args:
-        url: URL string or pre-built :class:`FetchRequest`.
-        **kwargs: Additional request fields when ``url`` is a string.
+        url: URL-like value or pre-built :class:`FetchRequest`.
+        **kwargs: Additional request fields when ``url`` is a URL-like value.
 
     Yields:
         :class:`~pyfetcher.contracts.response.StreamChunk` objects.
@@ -157,3 +160,13 @@ async def astream(url: str | FetchRequest, /, **kwargs: object) -> AsyncIterator
     request = url if isinstance(url, FetchRequest) else FetchRequest(url=url, **kwargs)
     async for chunk in get_default_fetch_service().astream(request):
         yield chunk
+
+
+def stream(url: URLInput | FetchRequest, /, **kwargs: object) -> Iterator[StreamChunk]:
+    """Stream a URL synchronously using the default service.
+
+    This is supported by the default HTTPX backend and yields normalized
+    :class:`StreamChunk` objects without buffering the complete response.
+    """
+    request = url if isinstance(url, FetchRequest) else FetchRequest(url=url, **kwargs)
+    yield from get_default_fetch_service().stream(request)

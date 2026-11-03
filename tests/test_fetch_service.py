@@ -162,8 +162,7 @@ def test_retryable_status_triggers_retry():
         ]
     )
     service = FetchService()
-    # 429 is retryable by default.  Use 2 attempts and minimal wait.
-    FetchRequest(
+    request = FetchRequest(
         url="https://example.com",
         retry=RetryPolicy(
             attempts=2,
@@ -172,28 +171,33 @@ def test_retryable_status_triggers_retry():
             retry_status_codes={429},
         ),
     )
-    # 429 triggers raise_for_status in the httpx transport before
-    # _maybe_raise_retryable_status is checked.  We need the transport to
-    # NOT raise on 429.  Since httpx transport calls response.raise_for_status(),
-    # 429 will cause an httpx.HTTPStatusError.  The retry policy by default
-    # retries on connection errors, but not on HTTPStatusError.
-    #
-    # Actually, looking at the code more carefully: the httpx transport calls
-    # response.raise_for_status() which raises HTTPStatusError for 4xx/5xx.
-    # This is BEFORE _maybe_raise_retryable_status in the service.  So the
-    # retry needs to handle HTTPStatusError too.
-    #
-    # However, the retry policy only retries on RetryableStatusCodeError,
-    # OSError, TimeoutError, ConnectionError.  httpx.HTTPStatusError is none
-    # of those.  So retryable status code logic in the service never fires
-    # for httpx because the transport raises first.
-    #
-    # Let's just verify that the transport properly raises on 429 and the
-    # service does not swallow it.  For a true retry integration test we mock
-    # the transport instead.
-    pass
-
+    response = service.fetch(request)
+    assert response.status_code == 200
+    assert response.text == "retried"
     service.close()
+
+
+@respx.mock
+async def test_retryable_status_triggers_async_retry():
+    respx.get("https://example.com/").mock(
+        side_effect=[Response(503), Response(200, text="recovered")]
+    )
+    service = FetchService()
+    request = FetchRequest(
+        url="https://example.com",
+        retry=RetryPolicy(
+            attempts=2,
+            wait_base_seconds=0.0,
+            wait_max_seconds=0.0,
+            retry_status_codes={503},
+        ),
+    )
+
+    response = await service.afetch(request)
+
+    assert response.status_code == 200
+    assert response.text == "recovered"
+    await service.aclose()
 
 
 @respx.mock
@@ -289,6 +293,38 @@ def test_aiohttp_async_backend_resolves():
     request = FetchRequest(url="https://example.com", backend="aiohttp")
     transport = service._get_async_transport(request)
     assert transport is service.aiohttp_transport
+
+
+async def test_registered_async_transport_is_resolved_and_closed():
+    class Adapter:
+        def __init__(self) -> None:
+            self.closed = False
+
+        async def afetch(self, request):
+            from pyfetcher.contracts.response import FetchResponse
+
+            return FetchResponse(
+                request_url=request.url.unicode_string(),
+                final_url=request.url.unicode_string(),
+                status_code=200,
+                headers={},
+                backend=request.backend,
+                elapsed_ms=1,
+            )
+
+        async def astream(self, request):
+            if False:
+                yield request
+
+        async def aclose(self):
+            self.closed = True
+
+    adapter = Adapter()
+    service = FetchService(async_transports={"scrapy": adapter})  # type: ignore[dict-item]
+    response = await service.afetch(FetchRequest(url="https://example.com", backend="scrapy"))
+    assert response.backend == "scrapy"
+    await service.aclose()
+    assert adapter.closed is True
 
 
 # ---------------------------------------------------------------------------

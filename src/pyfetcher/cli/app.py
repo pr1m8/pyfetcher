@@ -24,12 +24,13 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from pathlib import Path
 
 import click
 
 
 @click.group()
-@click.version_option(package_name="pyfetcher")
+@click.version_option(package_name="fetchkit")
 def cli() -> None:
     """pyfetcher - Advanced web fetching and scraping toolkit.
 
@@ -56,6 +57,7 @@ def cli() -> None:
     "--output", "-o", type=click.Choice(["json", "table", "raw", "headers"]), default="table"
 )
 @click.option("--timeout", "-t", default=30.0, type=float, help="Total timeout in seconds.")
+@click.option("--proxy", default=None, help="HTTP(S) proxy URL.")
 def fetch(
     url: str,
     method: str,
@@ -67,6 +69,7 @@ def fetch(
     follow: bool,
     output: str,
     timeout: float,
+    proxy: str | None,
 ) -> None:
     """Fetch a URL and display the response.
 
@@ -98,6 +101,7 @@ def fetch(
         verify_ssl=not no_verify,
         allow_redirects=follow,
         timeout=TimeoutPolicy(total_seconds=timeout),
+        proxy=proxy,
     )
 
     service = FetchService(header_provider=BrowserHeaderProvider(profile))
@@ -140,6 +144,98 @@ def fetch(
             click.echo(f"URL: {response.final_url}")
             click.echo(f"Elapsed: {response.elapsed_ms:.1f}ms")
             click.echo(f"Content-Type: {response.content_type or 'N/A'}")
+
+
+def _provider_options(values: tuple[str, ...]) -> dict[str, object]:
+    """Parse repeated NAME=JSON provider-native CLI options."""
+    parsed: dict[str, object] = {}
+    for value in values:
+        name, separator, raw = value.partition("=")
+        if not separator or not name.strip():
+            raise click.BadParameter("provider options must use NAME=VALUE")
+        try:
+            parsed[name.strip()] = json.loads(raw)
+        except json.JSONDecodeError:
+            parsed[name.strip()] = raw
+    return parsed
+
+
+@cli.command()
+@click.argument("url")
+@click.option(
+    "--provider",
+    "-p",
+    default="auto",
+    show_default=True,
+    help="Built-in or registered provider name.",
+)
+@click.option("--metadata", is_flag=True, help="Extract metadata without downloading.")
+@click.option("--output-dir", "-d", type=click.Path(), default=None)
+@click.option("--header", "-H", multiple=True, help="Shared header (Name: Value).")
+@click.option("--proxy", default=None, help="Shared provider proxy URL.")
+@click.option(
+    "--provider-option",
+    "provider_options",
+    multiple=True,
+    help="Provider-native NAME=JSON option; repeat as needed.",
+)
+@click.option(
+    "--load-provider-plugins",
+    is_flag=True,
+    help="Load installed fetchkit.acquisition.providers entry points.",
+)
+@click.option("--events", is_flag=True, help="Emit JSON Lines progress events.")
+def acquire(
+    url: str,
+    provider: str,
+    metadata: bool,
+    output_dir: str | None,
+    header: tuple[str, ...],
+    proxy: str | None,
+    provider_options: tuple[str, ...],
+    load_provider_plugins: bool,
+    events: bool,
+) -> None:
+    """Acquire metadata, files, media, or galleries through a provider."""
+    from pyfetcher.acquisition import AcquisitionRequest, AcquisitionService
+
+    headers: dict[str, str] = {}
+    for value in header:
+        name, separator, header_value = value.partition(":")
+        if not separator or not name.strip():
+            raise click.BadParameter("headers must use 'Name: Value'", param_hint="--header")
+        headers[name.strip()] = header_value.strip()
+
+    normalized_provider = provider.replace("-", "_")
+    native_options = _provider_options(provider_options)
+    if native_options and normalized_provider == "auto":
+        raise click.UsageError("--provider-option requires an explicit --provider")
+    request = AcquisitionRequest(
+        url=url,
+        provider=normalized_provider,
+        operation="metadata" if metadata else "download",
+        output_dir=output_dir,
+        headers=headers,
+        proxy=proxy,
+        provider_options=({normalized_provider: native_options} if native_options else {}),
+    )
+
+    async def run() -> None:
+        async with AcquisitionService() as service:
+            if load_provider_plugins:
+                service.load_entry_points()
+            if events:
+                async for event in service.aiter_events(request):
+                    click.echo(event.model_dump_json())
+                return
+            result = await service.acquire(request)
+            click.echo(result.model_dump_json(indent=2))
+
+    try:
+        asyncio.run(run())
+    except Exception as exc:
+        click.secho(f"Error: {exc}", fg="red", err=True)
+        raise click.Abort() from exc
 
 
 @cli.command()
@@ -430,6 +526,185 @@ def robots(url: str, user_agent: str, path: str, profile: str) -> None:
         click.echo("\nSitemaps:")
         for sitemap in rules.sitemaps:
             click.echo(f"  {sitemap}")
+
+
+@cli.group()
+def templates() -> None:
+    """Inspect and validate reusable job-template contracts."""
+
+
+def _builtin_registry():
+    from pyfetcher.jobs import TemplateRegistry, register_builtin_templates
+
+    registry = TemplateRegistry()
+    register_builtin_templates(registry)
+    return registry
+
+
+@templates.command(name="list")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Choice(["table", "json"]),
+    default="table",
+    show_default=True,
+)
+def templates_list(output: str) -> None:
+    """List the built-in versioned job-template catalog."""
+    descriptors = _builtin_registry().descriptors()
+    if output == "json":
+        click.echo(
+            json.dumps(
+                [
+                    {
+                        "template": descriptor.ref.key,
+                        "category": descriptor.category,
+                        "description": descriptor.description,
+                        "input_schema": descriptor.input_schema,
+                    }
+                    for descriptor in descriptors
+                ],
+                indent=2,
+            )
+        )
+        return
+    try:
+        from rich.console import Console
+        from rich.table import Table
+
+        table = Table(title="fetchkit job templates")
+        table.add_column("Template")
+        table.add_column("Category")
+        table.add_column("Description")
+        for descriptor in descriptors:
+            table.add_row(descriptor.ref.key, descriptor.category, descriptor.description)
+        Console().print(table)
+    except ImportError:  # pragma: no cover - Rich is a core dependency
+        for descriptor in descriptors:
+            click.echo(f"{descriptor.ref.key}\t{descriptor.category}\t{descriptor.description}")
+
+
+@templates.command(name="validate")
+@click.argument("path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def templates_validate(path: Path) -> None:
+    """Validate a serialized JobRequest or FlowRequest JSON file."""
+    from pydantic import ValidationError
+
+    from pyfetcher.jobs import FlowRequest, JobRequest
+
+    try:
+        value = json.loads(path.read_text())
+        jobs = (
+            FlowRequest.model_validate(value).jobs
+            if "jobs" in value
+            else (JobRequest.model_validate(value),)
+        )
+        registry = _builtin_registry()
+        for job in jobs:
+            registry.validate_payload(job.template, job.payload)
+    except (json.JSONDecodeError, KeyError, TypeError, ValidationError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.secho(f"Valid: {len(jobs)} job(s)", fg="green")
+
+
+@cli.group()
+def contracts() -> None:
+    """Inspect and export versioned cross-language contracts."""
+
+
+def _protocol_catalog(*, load_provider_plugins: bool = False):
+    from pyfetcher.protocol import discover_protocol_catalog
+
+    return asyncio.run(discover_protocol_catalog(load_provider_plugins=load_provider_plugins))
+
+
+@contracts.command(name="list")
+@click.option("--category", default=None, help="Filter by contract category.")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Choice(["table", "json"]),
+    default="table",
+    show_default=True,
+)
+@click.option(
+    "--load-provider-plugins",
+    is_flag=True,
+    help="Include installed fetchkit acquisition-provider entry points.",
+)
+def contracts_list(
+    category: str | None,
+    output: str,
+    load_provider_plugins: bool,
+) -> None:
+    """List stable JSON Schema contract identifiers."""
+    try:
+        catalog = _protocol_catalog(load_provider_plugins=load_provider_plugins)
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+    schemas = tuple(
+        item for item in catalog.schemas if category is None or item.category == category
+    )
+    if output == "json":
+        click.echo(
+            json.dumps(
+                [
+                    {
+                        "key": item.key,
+                        "category": item.category,
+                        "role": item.role,
+                        "title": item.title,
+                        "checksum_sha256": item.checksum_sha256,
+                    }
+                    for item in schemas
+                ],
+                indent=2,
+            )
+        )
+        return
+    try:
+        from rich.console import Console
+        from rich.table import Table
+
+        table = Table(title="fetchkit portable contracts")
+        table.add_column("Contract")
+        table.add_column("Category")
+        table.add_column("Role")
+        table.add_column("Title")
+        for item in schemas:
+            table.add_row(item.key, item.category, item.role, item.title)
+        Console().print(table)
+    except ImportError:  # pragma: no cover - Rich is a core dependency
+        for item in schemas:
+            click.echo(f"{item.key}\t{item.category}\t{item.role}\t{item.title}")
+
+
+@contracts.command(name="export")
+@click.argument("destination", type=click.Path(path_type=Path))
+@click.option(
+    "--split",
+    is_flag=True,
+    help="Write manifest.json plus one JSON Schema file per contract.",
+)
+@click.option(
+    "--load-provider-plugins",
+    is_flag=True,
+    help="Include installed fetchkit acquisition-provider entry points.",
+)
+def contracts_export(
+    destination: Path,
+    split: bool,
+    load_provider_plugins: bool,
+) -> None:
+    """Export a deterministic schema, provider, and template catalog."""
+    from pyfetcher.protocol import export_protocol_catalog
+
+    try:
+        catalog = _protocol_catalog(load_provider_plugins=load_provider_plugins)
+        paths = export_protocol_catalog(catalog, destination, split=split)
+    except (OSError, TypeError, ValueError) as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.secho(f"Exported {len(catalog.schemas)} contracts to {paths[0]}", fg="green")
 
 
 def main() -> None:

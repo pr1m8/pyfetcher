@@ -15,6 +15,7 @@ from pyfetcher.contracts.response import FetchResponse
 # patch at the source module path, not at pyfetcher.cli.app.
 _FETCH_SERVICE_PATH = "pyfetcher.fetch.service.FetchService"
 _DOWNLOAD_SERVICE_PATH = "pyfetcher.download.service.DownloadService"
+_ACQUISITION_SERVICE_PATH = "pyfetcher.acquisition.AcquisitionService"
 
 
 def _make_mock_response(
@@ -50,6 +51,82 @@ def test_cli_help():
     assert "fetch" in result.output
     assert "headers" in result.output
     assert "scrape" in result.output
+    assert "acquire" in result.output
+    assert "templates" in result.output
+    assert "contracts" in result.output
+
+
+def test_templates_list_json():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["templates", "list", "--output", "json"])
+    assert result.exit_code == 0, result.output
+    templates = {item["template"] for item in json.loads(result.output)}
+    assert templates == {"media.acquire@1", "site.search@1", "web.pagination@1"}
+
+
+def test_templates_validate_job(tmp_path: Path):
+    from pyfetcher.jobs import JobRequest, PaginationInput, TemplateRef
+
+    path = tmp_path / "job.json"
+    path.write_text(
+        JobRequest(
+            template=TemplateRef(name="web.pagination"),
+            target="https://example.com",
+            payload=PaginationInput().model_dump(mode="json"),
+        ).model_dump_json()
+    )
+    result = CliRunner().invoke(cli, ["templates", "validate", str(path)])
+    assert result.exit_code == 0, result.output
+    assert "Valid: 1 job(s)" in result.output
+
+
+def test_contracts_list_json():
+    result = CliRunner().invoke(cli, ["contracts", "list", "--output", "json"])
+    assert result.exit_code == 0, result.output
+    contracts = {item["key"] for item in json.loads(result.output)}
+    assert "http.fetch_request@1" in contracts
+    assert "acquisition.request@1" in contracts
+    assert "job.request@1" in contracts
+
+
+def test_contracts_export_split(tmp_path: Path):
+    destination = tmp_path / "contracts"
+    result = CliRunner().invoke(
+        cli,
+        ["contracts", "export", str(destination), "--split"],
+    )
+    assert result.exit_code == 0, result.output
+    assert "Exported" in result.output
+    assert (destination / "manifest.json").is_file()
+    assert (destination / "schemas" / "acquisition.request@1.schema.json").is_file()
+
+
+def test_cli_version_uses_distribution_metadata():
+    from pyfetcher import __version__
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--version"])
+    assert result.exit_code == 0
+    assert __version__ in result.output
+
+
+def test_provider_options_parse_json_and_strings():
+    from pyfetcher.cli.app import _provider_options
+
+    assert _provider_options(("noplaylist=true", "format=best")) == {
+        "noplaylist": True,
+        "format": "best",
+    }
+
+
+def test_acquire_requires_explicit_provider_for_native_options():
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["acquire", "https://example.com/file", "--provider-option", "format=best"],
+    )
+    assert result.exit_code != 0
+    assert "requires an explicit --provider" in result.output
 
 
 # ---------------------------------------------------------------------------

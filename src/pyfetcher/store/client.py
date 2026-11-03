@@ -30,6 +30,11 @@ class ObjectStoreClient:
         self._config = config or PyfetcherConfig()
         self._session = aioboto3.Session()
 
+    @property
+    def default_bucket(self) -> str:
+        """Return the configured default bucket without exposing config internals."""
+        return self._config.minio_bucket
+
     def _client_kwargs(self) -> dict[str, Any]:
         """Build kwargs for the S3 client context manager."""
         return {
@@ -152,6 +157,20 @@ class ObjectStoreClient:
         bucket = bucket or self._config.minio_bucket
         async with self._session.client(**self._client_kwargs()) as s3:
             await s3.delete_object(Bucket=bucket, Key=key)
+
+    async def exists(self, key: str, *, bucket: str | None = None) -> bool:
+        """Return whether an object exists without downloading it."""
+        bucket = bucket or self._config.minio_bucket
+        async with self._session.client(**self._client_kwargs()) as s3:
+            try:
+                await s3.head_object(Bucket=bucket, Key=key)
+            except Exception as exc:
+                response = getattr(exc, "response", {})
+                code = str(response.get("Error", {}).get("Code", ""))
+                if code in {"404", "NoSuchKey", "NotFound"}:
+                    return False
+                raise
+        return True
 
     async def list_keys(
         self, prefix: str = "", *, bucket: str | None = None, max_keys: int = 1000

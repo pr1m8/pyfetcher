@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterable, Iterator, Mapping
 
 from pyfetcher.contracts.request import BatchFetchRequest, FetchRequest
 from pyfetcher.contracts.response import (
@@ -35,6 +35,7 @@ from pyfetcher.contracts.response import (
 )
 from pyfetcher.headers.base import HeaderProvider
 from pyfetcher.headers.browser import BrowserHeaderProvider
+from pyfetcher.middleware import AsyncMiddleware, SyncMiddleware, compose_async, compose_sync
 from pyfetcher.ratelimit.limiter import DomainRateLimiter
 from pyfetcher.retry.tenacity import (
     RetryableStatusCodeError,
@@ -78,6 +79,8 @@ class FetchService:
             if not provided.
         aiohttp_transport: Optional aiohttp transport instance. Created
             lazily if not provided.
+        sync_transports: Additional named synchronous transport adapters.
+        async_transports: Additional named asynchronous transport adapters.
         rate_limiter: Optional per-domain rate limiter. Pass ``None``
             to disable rate limiting (the default).
 
@@ -95,14 +98,22 @@ class FetchService:
         header_provider: HeaderProvider | None = None,
         httpx_transport: HttpxTransport | None = None,
         aiohttp_transport: AiohttpTransport | None = None,
+        sync_transports: Mapping[str, SyncTransport] | None = None,
+        async_transports: Mapping[str, AsyncTransport] | None = None,
+        sync_middleware: Iterable[SyncMiddleware[FetchRequest, FetchResponse]] = (),
+        async_middleware: Iterable[AsyncMiddleware[FetchRequest, FetchResponse]] = (),
         rate_limiter: DomainRateLimiter | None = None,
     ) -> None:
         self.header_provider = header_provider or BrowserHeaderProvider()
         self.httpx_transport = httpx_transport or HttpxTransport()
         self.aiohttp_transport = aiohttp_transport or AiohttpTransport()
+        self._sync_transports = dict(sync_transports or {})
+        self._async_transports = dict(async_transports or {})
         self.rate_limiter = rate_limiter
         self._curl_cffi_transport: CurlCffiTransport | None = None  # type: ignore[type-arg]
         self._cloudscraper_transport: CloudscraperTransport | None = None  # type: ignore[type-arg]
+        self._fetch_handler = compose_sync(self._fetch_impl, sync_middleware)
+        self._afetch_handler = compose_async(self._afetch_impl, async_middleware)
 
     def _prepare_request(self, request: FetchRequest) -> FetchRequest:
         """Merge provider headers into the request.
@@ -129,6 +140,9 @@ class FetchService:
         Raises:
             ValueError: If the backend does not support synchronous fetch.
         """
+        registered = self._sync_transports.get(request.backend)
+        if registered is not None:
+            return registered
         if request.backend == "httpx":
             return self.httpx_transport
         if request.backend == "curl_cffi":
@@ -157,6 +171,9 @@ class FetchService:
         Raises:
             ValueError: If the backend is unsupported for async.
         """
+        registered = self._async_transports.get(request.backend)
+        if registered is not None:
+            return registered
         if request.backend == "httpx":
             return self.httpx_transport
         if request.backend == "aiohttp":
@@ -168,6 +185,18 @@ class FetchService:
                 self._curl_cffi_transport = CurlCffiTransport()
             return self._curl_cffi_transport  # type: ignore[return-value]
         raise ValueError(f"Unsupported async backend: {request.backend!r}")
+
+    def register_sync_transport(self, name: str, transport: SyncTransport) -> None:
+        """Register or replace a named synchronous transport adapter."""
+        if not name:
+            raise ValueError("transport name cannot be empty")
+        self._sync_transports[name] = transport
+
+    def register_async_transport(self, name: str, transport: AsyncTransport) -> None:
+        """Register or replace a named asynchronous transport adapter."""
+        if not name:
+            raise ValueError("transport name cannot be empty")
+        self._async_transports[name] = transport
 
     def _maybe_raise_retryable_status(self, response: FetchResponse, request: FetchRequest) -> None:
         """Raise a retryable status error when the response code is configured as retryable.
@@ -206,6 +235,10 @@ class FetchService:
                 >>> hasattr(service, "fetch")
                 True
         """
+        return self._fetch_handler(request)
+
+    def _fetch_impl(self, request: FetchRequest) -> FetchResponse:
+        """Execute the core synchronous fetch beneath middleware."""
         prepared = self._prepare_request(request)
         transport = self._get_sync_transport(prepared)
         retrying = build_retrying(prepared.retry)
@@ -244,6 +277,10 @@ class FetchService:
                 >>> hasattr(service, "afetch")
                 True
         """
+        return await self._afetch_handler(request)
+
+    async def _afetch_impl(self, request: FetchRequest) -> FetchResponse:
+        """Execute the core asynchronous fetch beneath middleware."""
         prepared = self._prepare_request(request)
         transport = self._get_async_transport(prepared)
         retrying = build_async_retrying(prepared.retry)
@@ -336,26 +373,98 @@ class FetchService:
         if self.rate_limiter:
             await self.rate_limiter.aacquire(prepared.url.unicode_string())
         transport = self._get_async_transport(prepared)
+        total_bytes = 0
         async for chunk in transport.astream(prepared):
+            if prepared.stream.max_bytes is not None:
+                remaining = prepared.stream.max_bytes - total_bytes
+                if remaining <= 0:
+                    break
+                if len(chunk.data) > remaining:
+                    yield chunk.model_copy(update={"data": chunk.data[:remaining]})
+                    break
+            total_bytes += len(chunk.data)
             yield chunk
+
+    def stream(self, request: FetchRequest) -> Iterator[StreamChunk]:
+        """Stream a request synchronously through a capable backend.
+
+        The default HTTPX backend supports this interface. ``max_bytes`` from
+        the request's stream policy is enforced without buffering the body.
+        """
+        prepared = self._prepare_request(request)
+        if self.rate_limiter:
+            self.rate_limiter.acquire(prepared.url.unicode_string())
+        transport = self._get_sync_transport(prepared)
+        stream = getattr(transport, "stream", None)
+        if not callable(stream):
+            raise ValueError(f"Backend does not support synchronous streaming: {request.backend!r}")
+
+        total_bytes = 0
+        for chunk in stream(prepared):
+            if prepared.stream.max_bytes is not None:
+                remaining = prepared.stream.max_bytes - total_bytes
+                if remaining <= 0:
+                    break
+                if len(chunk.data) > remaining:
+                    yield chunk.model_copy(update={"data": chunk.data[:remaining]})
+                    break
+            total_bytes += len(chunk.data)
+            yield chunk
+
+    def __enter__(self) -> FetchService:
+        """Return this service for synchronous context-manager use."""
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        """Close synchronous resources on context-manager exit."""
+        self.close()
+
+    async def __aenter__(self) -> FetchService:
+        """Return this service for application-lifespan use."""
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        """Close asynchronous resources on context-manager exit."""
+        await self.aclose()
 
     def close(self) -> None:
         """Close owned synchronous resources.
 
-        Closes any internally-managed transport clients. Externally
-        provided transports are not closed.
+        Closes built-in and registered synchronous transports. A caller that
+        shares a transport between services must coordinate that lifecycle.
         """
-        close = getattr(self.httpx_transport, "close", None)
-        if callable(close):
-            close()
+        transports = (
+            self.httpx_transport,
+            self._curl_cffi_transport,
+            self._cloudscraper_transport,
+            *self._sync_transports.values(),
+        )
+        seen: set[int] = set()
+        for transport in transports:
+            if id(transport) in seen:
+                continue
+            seen.add(id(transport))
+            close = getattr(transport, "close", None)
+            if callable(close):
+                close()
 
     async def aclose(self) -> None:
         """Close owned asynchronous resources.
 
-        Closes any internally-managed async transport clients. Externally
-        provided transports are not closed.
+        Closes built-in and registered asynchronous transports. A caller that
+        shares a transport between services must coordinate that lifecycle.
         """
-        for transport in (self.httpx_transport, self.aiohttp_transport, self._curl_cffi_transport):
+        transports = (
+            self.httpx_transport,
+            self.aiohttp_transport,
+            self._curl_cffi_transport,
+            *self._async_transports.values(),
+        )
+        seen: set[int] = set()
+        for transport in transports:
+            if id(transport) in seen:
+                continue
+            seen.add(id(transport))
             aclose = getattr(transport, "aclose", None)
             if callable(aclose):
                 await aclose()
