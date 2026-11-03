@@ -52,7 +52,8 @@ All notable changes to fetchkit are documented here. The project follows
 - A WebPoet ``HttpClient`` downloader bridge, allowlisted standalone page
   registry, and ``webpoet.extract@1`` job template, with a separate
   ``scrapy-poet`` extra for complete crawler integration.
-- Optional Redis Streams at-least-once queue and Temporal durable flow runtime.
+- Optional Redis Streams at-least-once queue, atomic Redis job status/result
+  store, and Temporal durable flow runtime.
 - OpenTelemetry job/fetch spans, metrics, W3C child-job propagation, OTLP/Tempo
   export configuration, and standard-log trace correlation.
 - ``pyfetcher templates list`` and ``templates validate`` CLI commands.
@@ -62,7 +63,8 @@ All notable changes to fetchkit are documented here. The project follows
 - An optional FastAPI job control plane with health, template discovery,
   submission, paging, inspection, cancellation, worker state, and SSE events.
 - ``pyfetcher jobs run`` for finite JSON job/flow execution and ``jobs serve``
-  for a lifecycle-owned API and worker process, with optional OTLP export.
+  for a lifecycle-owned API and worker process, with optional Redis durability
+  and OTLP export.
 - A deterministic, versioned JSON Schema contract catalog for HTTP,
   extraction, acquisition, media, artifacts, search, queues, and jobs, with
   provider/template discovery, SHA-256 drift checks, split TypeScript-friendly

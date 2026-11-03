@@ -10,6 +10,9 @@ Integrations
 .. automodule:: pyfetcher.integrations.redis_streams
    :members:
 
+.. automodule:: pyfetcher.integrations.redis_store
+   :members:
+
 The optional :mod:`pyfetcher.integrations.api` module exposes the durable-job
 control plane through FastAPI, including health, submission, inspection,
 cancellation, discovery, and Server-Sent Events. Install ``fetchkit[api]``

@@ -176,9 +176,8 @@ The local defaults are suitable for an application process or tests:
 The queue owns delivery and leases; the store owns queryable status, results,
 cancellation intent, and idempotency records. ``InMemoryJobQueue`` and
 ``InMemoryJobStore`` do not survive a restart and cannot coordinate separate
-processes. Inject Redis Streams for distributed delivery and a durable
-``JobStore`` implementation before treating the control plane as durable
-across processes.
+processes. Pair ``RedisStreamJobQueue`` with ``RedisJobStore`` before treating
+the control plane as durable across processes.
 
 HTTP API and command-line host
 ------------------------------
@@ -189,6 +188,15 @@ control plane and worker:
 .. code-block:: bash
 
    python -m pip install 'fetchkit[api]'
+   pyfetcher jobs serve --host 127.0.0.1 --port 8000 --concurrency 8
+
+Add the Redis extra and set the connection URL to make queue delivery, status,
+results, cancellation, and submission idempotency shared across processes:
+
+.. code-block:: bash
+
+   python -m pip install 'fetchkit[api,redis]'
+   export FETCHKIT_REDIS_URL=redis://localhost:6379/0
    pyfetcher jobs serve --host 127.0.0.1 --port 8000 --concurrency 8
 
 The versioned routes include ``POST /v1/jobs``, ``GET /v1/jobs``,
@@ -249,12 +257,29 @@ integration specification <https://web-poet.readthedocs.io/en/stable/frameworks/
 and `additional-request contract
 <https://web-poet.readthedocs.io/en/stable/frameworks/additional-requests.html>`_.
 
-Redis Streams queue
--------------------
+Redis queue and job store
+-------------------------
 
 Install ``fetchkit[redis]`` and create
 :class:`~pyfetcher.integrations.redis_streams.RedisStreamJobQueue` with an
-injected async Redis client or ``RedisStreamJobQueue.from_url()``.
+injected async Redis client or ``RedisStreamJobQueue.from_url()``. Pair it with
+:class:`~pyfetcher.integrations.redis_store.RedisJobStore`; a shared queue with
+an in-memory store loses queryable state and idempotency at process boundaries.
+
+.. code-block:: python
+
+   from pyfetcher.integrations.redis_store import RedisJobStore
+   from pyfetcher.integrations.redis_streams import RedisStreamJobQueue
+   from pyfetcher.jobs import JobApplication
+
+   queue = RedisStreamJobQueue.from_url(redis_url)
+   store = RedisJobStore.from_url(redis_url)
+   application = JobApplication.create(
+       context=context,
+       queue=queue,
+       store=store,
+       owned_resources=(queue, store),
+   )
 
 The adapter uses consumer groups, explicit acknowledgement, stale-message
 claiming, a dead-letter stream, and a sorted set for delayed retries. Its
@@ -263,6 +288,13 @@ idempotency keys or a durable result/transaction boundary. Redis Pub/Sub is not
 used because it is at-most-once and non-durable. See the official `Redis Streams
 documentation <https://redis.io/docs/latest/develop/data-types/streams/>`_ and
 `Pub/Sub delivery semantics <https://redis.io/docs/latest/develop/pubsub/>`_.
+
+The store uses hashes plus global and per-status sorted-set indexes. Lua keeps
+each record transition and its indexes atomic, and an idempotency-key hash
+coordinates concurrent submissions. Its default ``fetchkit:{jobs}:store``
+prefix contains a Redis Cluster hash tag; preserve a common hash tag when
+supplying a custom prefix. Retention remains an application policy: delete old
+records explicitly, and keep large bodies or media in a ``BlobStore``.
 
 Temporal durable execution
 --------------------------
@@ -322,7 +354,8 @@ Delivery guarantees and non-goals
 * Redis Streams provides at-least-once delivery, not exactly-once side effects.
 * Temporal persists orchestration but activities must still be idempotent.
 * Blob stores persist bytes; ``JobStore`` persists queryable execution state.
-  The bundled implementation is currently in-memory.
+  Built-in in-memory and Redis implementations serve local and distributed
+  hosts respectively.
 * Templates are versioned. Changing incompatible input/output semantics means
   registering a new version rather than mutating old queued jobs.
 * The HTTP adapter uses the transport-neutral service boundary. gRPC, a web

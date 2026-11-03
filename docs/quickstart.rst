@@ -51,7 +51,7 @@ Quote extras in shell commands so brackets are not interpreted by the shell:
      - Typed CSS/XPath page extraction with Parsel
    * - ``redis``
      - ``fetchkit[redis]``
-     - Redis Streams queue adapter
+     - Redis Streams queue and durable job status store
    * - ``temporal``
      - ``fetchkit[temporal]``
      - Temporal durable-flow runtime

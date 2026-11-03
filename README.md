@@ -229,7 +229,7 @@ pip install 'fetchkit[web-poet]'       # WebPoet page-object adapter
 pip install 'fetchkit[scrapy-poet]'    # WebPoet + full Scrapy integration
 pip install 'fetchkit[selectors]'      # Typed CSS/XPath page extraction
 pip install 'fetchkit[url-tools]'      # yarl, w3lib canonicalization, public-suffix domains
-pip install 'fetchkit[redis]'          # Redis Streams job queue
+pip install 'fetchkit[redis]'          # Redis queue + durable job status store
 pip install 'fetchkit[temporal]'       # Temporal durable flow runtime
 pip install 'fetchkit[api]'            # FastAPI durable-job control plane
 pip install 'fetchkit[observe]'        # OpenTelemetry OTLP traces + metrics
@@ -414,12 +414,14 @@ Run a job or flow file directly, or host the same service through FastAPI:
 ```bash
 pyfetcher jobs run flow.json --concurrency 8 --artifacts-dir ./artifacts
 pyfetcher jobs serve --host 127.0.0.1 --port 8000 --concurrency 8
+FETCHKIT_REDIS_URL=redis://localhost:6379/0 pyfetcher jobs serve
 ```
 
-The bundled queue and result store are process-local. Applications can inject
-Redis Streams and a durable status-store adapter without changing job
-templates; the latter adapter is still an extension point rather than a
-built-in persistent implementation.
+The default queue and result store are process-local. Install
+`fetchkit[api,redis]` and use `--redis-url` or `FETCHKIT_REDIS_URL` to pair the
+built-in Redis Streams queue with the durable Redis status/result store without
+changing job templates. Queue deliveries remain at least once, so templates
+with external side effects still need downstream idempotency.
 
 ### Browser Profiles & Headers
 
@@ -548,6 +550,7 @@ pyfetcher templates validate job.json
 # Run a flow or host the job API and worker
 pyfetcher jobs run flow.json --concurrency 8
 pyfetcher jobs serve --port 8000
+FETCHKIT_REDIS_URL=redis://localhost:6379/0 pyfetcher jobs serve
 
 # Export portable contracts for TypeScript, queues, or an API layer
 pyfetcher contracts list --category acquisition

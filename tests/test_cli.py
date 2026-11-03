@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from click.testing import CliRunner
 
@@ -106,6 +106,43 @@ def test_jobs_serve_help_does_not_require_starting_server():
     result = CliRunner().invoke(cli, ["jobs", "serve", "--help"])
     assert result.exit_code == 0, result.output
     assert "HTTP control plane" in result.output
+    assert "--redis-url" in result.output
+
+
+async def test_job_application_can_own_redis_queue_and_store(tmp_path: Path):
+    from pyfetcher.cli.app import _job_application
+
+    queue = MagicMock()
+    queue.aclose = AsyncMock()
+    store = MagicMock()
+    store.aclose = AsyncMock()
+    with (
+        patch(
+            "pyfetcher.integrations.redis_streams.RedisStreamJobQueue.from_url",
+            return_value=queue,
+        ) as queue_factory,
+        patch(
+            "pyfetcher.integrations.redis_store.RedisJobStore.from_url",
+            return_value=store,
+        ) as store_factory,
+    ):
+        application, telemetry = _job_application(
+            artifacts_dir=tmp_path,
+            concurrency=2,
+            otlp_endpoint=None,
+            redis_url="redis://example.invalid/0",
+        )
+
+    assert application.queue is queue
+    assert application.store is store
+    assert telemetry is None
+    queue_factory.assert_called_once_with("redis://example.invalid/0")
+    store_factory.assert_called_once_with("redis://example.invalid/0")
+
+    await application.aclose()
+
+    queue.aclose.assert_awaited_once()
+    store.aclose.assert_awaited_once()
 
 
 def test_contracts_list_json():

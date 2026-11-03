@@ -69,7 +69,8 @@ Key Features
       :link-type: doc
 
       Versioned templates, dynamic pagination and collection fan-out, portable
-      artifacts, WebPoet, Redis Streams, Temporal, and OpenTelemetry.
+      artifacts, WebPoet, Redis queue/status durability, Temporal, and
+      OpenTelemetry.
 
    .. grid-item-card:: Cross-language Contracts
       :link: contracts

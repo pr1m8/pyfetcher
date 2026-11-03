@@ -631,6 +631,7 @@ def _job_application(
     artifacts_dir: Path,
     concurrency: int,
     otlp_endpoint: str | None,
+    redis_url: str | None = None,
 ):
     """Compose the built-in worker dependencies for CLI process hosts."""
     from pyfetcher.acquisition import AcquisitionService
@@ -662,11 +663,27 @@ def _job_application(
             raise click.ClickException(str(exc)) from exc
         telemetry = configure_telemetry(TelemetryConfig(endpoint=otlp_endpoint))
         hooks = (OpenTelemetryJobHook(),)
+    queue = None
+    store = None
+    owned_resources = (fetcher, acquisition)
+    if redis_url is not None:
+        from pyfetcher.integrations.redis_store import RedisJobStore
+        from pyfetcher.integrations.redis_streams import RedisStreamJobQueue
+
+        try:
+            queue = RedisStreamJobQueue.from_url(redis_url)
+            store = RedisJobStore.from_url(redis_url)
+        except ImportError as exc:
+            raise click.ClickException(str(exc)) from exc
+        owned_resources = (*owned_resources, queue, store)
+
     application = JobApplication.create(
         context=context,
+        queue=queue,
+        store=store,
         hooks=hooks,
         worker_config=WorkerConfig(concurrency=concurrency),
-        owned_resources=(fetcher, acquisition),
+        owned_resources=owned_resources,
     )
     return application, telemetry
 
@@ -754,6 +771,12 @@ def jobs_run(
 @click.option("--log-format", type=click.Choice(["text", "json"]), default="text")
 @click.option("--log-level", default="INFO", show_default=True)
 @click.option("--otlp-endpoint", default=None, help="Export traces and metrics via OTLP.")
+@click.option(
+    "--redis-url",
+    envvar="FETCHKIT_REDIS_URL",
+    show_envvar=True,
+    help="Use Redis Streams plus the durable Redis job store.",
+)
 def jobs_serve(
     host: str,
     port: int,
@@ -762,6 +785,7 @@ def jobs_serve(
     log_format: str,
     log_level: str,
     otlp_endpoint: str | None,
+    redis_url: str | None,
 ) -> None:
     """Serve the HTTP control plane and an in-process worker."""
     from pyfetcher.jobs import configure_job_logging
@@ -780,6 +804,7 @@ def jobs_serve(
         artifacts_dir=artifacts_dir,
         concurrency=concurrency,
         otlp_endpoint=otlp_endpoint,
+        redis_url=redis_url,
     )
     try:
         uvicorn.run(

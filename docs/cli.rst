@@ -108,10 +108,19 @@ process:
 
    pyfetcher jobs serve --host 127.0.0.1 --port 8000 --concurrency 8
 
+For restart-safe, multi-process queue and status state, install
+``fetchkit[api,redis]`` and configure Redis. The environment variable avoids
+placing credentials directly in a checked-in command or service definition:
+
+.. code-block:: bash
+
+   export FETCHKIT_REDIS_URL=redis://localhost:6379/0
+   pyfetcher jobs serve --port 8000
+
 Add ``fetchkit[observe]`` and pass ``--otlp-endpoint`` to either command for
 OpenTelemetry job spans and metrics. The default queue and status store are
-in-memory; inject durable adapters in an application host for restart or
-multi-process durability.
+in-memory; ``--redis-url`` or ``FETCHKIT_REDIS_URL`` selects the built-in Redis
+Streams queue and durable Redis job store.
 
 contracts
 ---------

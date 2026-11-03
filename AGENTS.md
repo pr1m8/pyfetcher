@@ -84,6 +84,34 @@ documentation page, example, and tests before making a change.
 10. Do not claim exactly-once delivery. Design Redis/worker paths for retries
     and idempotency; keep Temporal workflow code deterministic.
 
+## Durable job integration checklist
+
+- Keep the three persistence roles separate: `JobQueue` owns delivery, leases,
+  acknowledgements, and retries; `JobStore` owns queryable state, results,
+  cancellation intent, and submission idempotency; `BlobStore` owns large
+  bytes. Do not make one adapter silently stand in for another.
+- The in-memory queue and store are single-process defaults only. A distributed
+  Redis host should inject both `RedisStreamJobQueue` and `RedisJobStore` into
+  the same `JobApplication`. Never pair a shared queue with process-local job
+  state when the API and workers run separately.
+- Submit through `JobService` rather than enqueueing directly. Workers must
+  persist retry or terminal state before moving or acknowledging the delivery,
+  so a crash produces a recoverable redelivery instead of lost status.
+- Treat `JobRequest.idempotency_key` as submission deduplication, not an
+  exactly-once guarantee for external writes. Templates with side effects must
+  also use a stable downstream idempotency key or an application transaction.
+- Cancellation is cooperative. Store cancellation intent durably, check it
+  while renewing leases, and make templates safe to retry after interruption.
+- Make adapter ownership explicit. Either add injected queues, stores, clients,
+  and providers to `JobApplication.owned_resources` or close them in the host;
+  never rely on interpreter shutdown.
+- Keep HTTP, CLI, and future RPC adapters thin: validate transport input, then
+  delegate to `JobService` and its versioned Pydantic contracts. Do not create
+  transport-specific execution or status models.
+- Test durable changes offline for concurrent idempotent submission, retry and
+  terminal transitions, redelivery, cancellation, paging/index consistency,
+  and cleanup. Live Redis and Temporal tests must remain opt-in.
+
 ## Editing workflow
 
 1. Inspect the relevant public exports, docs, example, and focused tests.
