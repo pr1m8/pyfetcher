@@ -54,6 +54,7 @@ def test_cli_help():
     assert "acquire" in result.output
     assert "templates" in result.output
     assert "contracts" in result.output
+    assert "jobs" in result.output
 
 
 def test_templates_list_json():
@@ -78,6 +79,33 @@ def test_templates_validate_job(tmp_path: Path):
     result = CliRunner().invoke(cli, ["templates", "validate", str(path)])
     assert result.exit_code == 0, result.output
     assert "Valid: 1 job(s)" in result.output
+
+
+def test_jobs_run_empty_flow(tmp_path: Path):
+    from pyfetcher.jobs import FlowRequest
+
+    path = tmp_path / "flow.json"
+    path.write_text(FlowRequest(name="empty", jobs=()).model_dump_json())
+    result = CliRunner().invoke(
+        cli,
+        [
+            "jobs",
+            "run",
+            str(path),
+            "--artifacts-dir",
+            str(tmp_path / "artifacts"),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["status"] == "succeeded"
+    assert payload["submitted_jobs"] == 0
+
+
+def test_jobs_serve_help_does_not_require_starting_server():
+    result = CliRunner().invoke(cli, ["jobs", "serve", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "HTTP control plane" in result.output
 
 
 def test_contracts_list_json():

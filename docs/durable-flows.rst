@@ -7,22 +7,22 @@ versioned :class:`~pyfetcher.jobs.TemplateRef`; a worker resolves that reference
 through :class:`~pyfetcher.jobs.TemplateRegistry` and injects runtime clients,
 credentials, and storage through :class:`~pyfetcher.jobs.JobContext`.
 
-This same envelope can be kept in a JSON file, sent through Redis Streams,
-executed as a Temporal activity, accepted by a future RPC API, or run locally.
+This same envelope can be kept in a JSON file, submitted through the HTTP
+control plane, sent through Redis Streams, executed as a Temporal activity, or
+run locally.
 
 .. mermaid::
 
    flowchart LR
-       Spec["JobRequest<br/>template@version + JSON policy"] --> Runtime
-       Registry["TemplateRegistry<br/>allowlisted implementations"] --> Runtime
-       Services["JobContext<br/>fetch · acquisition · search · blobs"] --> Runtime
-       Runtime{"Flow runtime"}
-       Runtime --> Local["In-process queue"]
-       Runtime --> Redis["Redis Streams workers"]
-       Runtime --> Temporal["Temporal workflow + activities"]
-       Local --> Result
-       Redis --> Result
-       Temporal --> Result
+       HTTP["HTTP / CLI / Python"] --> Service["JobService"]
+       Spec["JobRequest<br/>template@version + JSON policy"] --> Service
+       Service --> Store["JobStore<br/>status · results · cancellation"]
+       Service --> Queue["JobQueue<br/>delivery · leases · retries"]
+       Queue --> Worker["JobWorker<br/>bounded process host"]
+       Registry["TemplateRegistry<br/>allowlisted implementations"] --> Worker
+       Services["JobContext<br/>fetch · acquisition · search · blobs"] --> Worker
+       Worker --> Result
+       Temporal["Temporal workflow + activities"] --> Result
        Result["JobResult<br/>artifacts · collections · child jobs"] --> Blob[("Local / S3 / MinIO blobs")]
 
 Core contracts
@@ -147,6 +147,68 @@ Retries use the job policy, including exponential backoff. ``max_jobs`` bounds
 dynamic expansion, and idempotency keys suppress duplicate enqueueing within
 the local queue.
 
+Worker application and control plane
+------------------------------------
+
+:class:`~pyfetcher.jobs.JobApplication` assembles one registry, executor,
+queue, status store, service, and long-running worker while keeping every
+adapter injectable. :class:`~pyfetcher.jobs.JobService` is the
+transport-neutral control plane for submit, inspect, list, cancel, health, and
+template discovery. :class:`~pyfetcher.jobs.JobWorker` owns bounded execution,
+lease heartbeats, cooperative cancellation, retries, child submission, and
+structured lifecycle events.
+
+The local defaults are suitable for an application process or tests:
+
+.. code-block:: python
+
+   from pyfetcher.jobs import JobApplication, WorkerConfig
+
+   application = JobApplication.create(
+       context=context,
+       worker_config=WorkerConfig(concurrency=8),
+   )
+
+   async with application:
+       submission = await application.service.submit(job)
+       record = await application.service.get(submission.job_id)
+
+The queue owns delivery and leases; the store owns queryable status, results,
+cancellation intent, and idempotency records. ``InMemoryJobQueue`` and
+``InMemoryJobStore`` do not survive a restart and cannot coordinate separate
+processes. Inject Redis Streams for distributed delivery and a durable
+``JobStore`` implementation before treating the control plane as durable
+across processes.
+
+HTTP API and command-line host
+------------------------------
+
+Install the optional API adapter and start one process containing the HTTP
+control plane and worker:
+
+.. code-block:: bash
+
+   python -m pip install 'fetchkit[api]'
+   pyfetcher jobs serve --host 127.0.0.1 --port 8000 --concurrency 8
+
+The versioned routes include ``POST /v1/jobs``, ``GET /v1/jobs``,
+``GET /v1/jobs/{job_id}``, ``POST /v1/jobs/{job_id}/cancel``, template and
+worker discovery, health, and an SSE worker-event stream at ``/v1/events``.
+The FastAPI lifespan starts and closes the injected
+:class:`~pyfetcher.jobs.JobApplication`; it does not create a second execution
+model.
+
+For finite scripts and CI, execute a serialized ``JobRequest`` or
+``FlowRequest`` without starting a server:
+
+.. code-block:: bash
+
+   pyfetcher jobs run flow.json --concurrency 8 --artifacts-dir ./artifacts
+
+Both commands assemble pooled fetch and acquisition clients once for the
+process. Site-search providers and custom templates remain application-owned
+registrations; the stock CLI does not guess site-specific configuration.
+
 WebPoet page objects
 --------------------
 
@@ -247,15 +309,22 @@ stable. See `OpenTelemetry Python status
 <https://opentelemetry.io/docs/languages/python/>`_ and `Grafana Tempo
 documentation <https://grafana.com/docs/tempo/latest/>`_.
 
+Worker logs can be emitted as text or stable JSON Lines with
+``configure_job_logging``. The CLI accepts ``--log-format json`` and
+``--otlp-endpoint`` on ``jobs run`` and ``jobs serve``. The OTLP option needs
+the ``observe`` extra and adds job spans and metrics; worker events carry job,
+run, template, attempt, and worker identifiers for correlation.
+
 Delivery guarantees and non-goals
 ---------------------------------
 
 * A queue delivery and a workflow execution are different abstractions.
 * Redis Streams provides at-least-once delivery, not exactly-once side effects.
 * Temporal persists orchestration but activities must still be idempotent.
-* Blob stores persist bytes; a separate metadata/result store may index
-  artifacts and completed jobs.
+* Blob stores persist bytes; ``JobStore`` persists queryable execution state.
+  The bundled implementation is currently in-memory.
 * Templates are versioned. Changing incompatible input/output semantics means
   registering a new version rather than mutating old queued jobs.
-* RPC, web UI, TUI workflow inspection, and job-category scheduling can be
-  layered above these contracts without changing provider implementations.
+* The HTTP adapter uses the transport-neutral service boundary. gRPC, a web
+  UI, TUI workflow inspection, and stronger distributed control-plane
+  adapters remain planned rather than implemented.

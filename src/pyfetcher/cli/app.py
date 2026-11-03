@@ -607,6 +607,194 @@ def templates_validate(path: Path) -> None:
     click.secho(f"Valid: {len(jobs)} job(s)", fg="green")
 
 
+def _load_job_input(path: Path):
+    """Load one portable job or dynamic flow from JSON."""
+    from pydantic import ValidationError
+
+    from pyfetcher.jobs import FlowRequest, JobRequest
+
+    try:
+        value = json.loads(path.read_text())
+        if not isinstance(value, dict):
+            raise TypeError("job input must be a JSON object")
+        return (
+            FlowRequest.model_validate(value)
+            if "jobs" in value
+            else JobRequest.model_validate(value)
+        )
+    except (OSError, json.JSONDecodeError, TypeError, ValidationError) as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
+def _job_application(
+    *,
+    artifacts_dir: Path,
+    concurrency: int,
+    otlp_endpoint: str | None,
+):
+    """Compose the built-in worker dependencies for CLI process hosts."""
+    from pyfetcher.acquisition import AcquisitionService
+    from pyfetcher.artifacts import LocalBlobStore
+    from pyfetcher.fetch import AsyncFetchClient
+    from pyfetcher.jobs import JobApplication, JobContext, WorkerConfig
+    from pyfetcher.search import SearchService
+
+    fetcher = AsyncFetchClient()
+    acquisition = AcquisitionService()
+    context = JobContext(
+        services={
+            "fetch": fetcher,
+            "acquisition": acquisition,
+            "search": SearchService(),
+        },
+        blob_store=LocalBlobStore(artifacts_dir),
+    )
+    hooks = ()
+    telemetry = None
+    if otlp_endpoint is not None:
+        try:
+            from pyfetcher.telemetry import (
+                OpenTelemetryJobHook,
+                TelemetryConfig,
+                configure_telemetry,
+            )
+        except ImportError as exc:
+            raise click.ClickException(str(exc)) from exc
+        telemetry = configure_telemetry(TelemetryConfig(endpoint=otlp_endpoint))
+        hooks = (OpenTelemetryJobHook(),)
+    application = JobApplication.create(
+        context=context,
+        hooks=hooks,
+        worker_config=WorkerConfig(concurrency=concurrency),
+        owned_resources=(fetcher, acquisition),
+    )
+    return application, telemetry
+
+
+@cli.group()
+def jobs() -> None:
+    """Run or host portable durable-job contracts."""
+
+
+@jobs.command(name="run")
+@click.argument("path", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "--artifacts-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path(".fetchkit/artifacts"),
+    show_default=True,
+)
+@click.option("--concurrency", type=click.IntRange(min=1), default=None)
+@click.option("--log-format", type=click.Choice(["text", "json"]), default="text")
+@click.option("--log-level", default="INFO", show_default=True)
+@click.option("--otlp-endpoint", default=None, help="Export traces and metrics via OTLP.")
+def jobs_run(
+    path: Path,
+    artifacts_dir: Path,
+    concurrency: int | None,
+    log_format: str,
+    log_level: str,
+    otlp_endpoint: str | None,
+) -> None:
+    """Execute a JobRequest or FlowRequest JSON file to completion."""
+    from pyfetcher.jobs import (
+        FlowRequest,
+        InProcessJobRuntime,
+        JobRequest,
+        configure_job_logging,
+    )
+
+    value = _load_job_input(path)
+    configure_job_logging(level=log_level.upper(), json_output=log_format == "json")
+    if isinstance(value, JobRequest):
+        flow = FlowRequest(
+            name=f"cli:{value.template.name}",
+            jobs=(value,),
+            concurrency=concurrency or 1,
+        )
+    else:
+        flow = value.model_copy(update={"concurrency": concurrency}) if concurrency else value
+
+    async def run():
+        application, telemetry = _job_application(
+            artifacts_dir=artifacts_dir,
+            concurrency=flow.concurrency,
+            otlp_endpoint=otlp_endpoint,
+        )
+        try:
+            async with InProcessJobRuntime(
+                application.executor,
+                queue=application.queue,
+            ) as runtime:
+                return await runtime.run(flow)
+        finally:
+            await application.aclose()
+            if telemetry is not None:
+                telemetry.shutdown()
+
+    try:
+        result = asyncio.run(run())
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.echo(result.model_dump_json(indent=2))
+    if result.status != "succeeded":
+        raise click.exceptions.Exit(1)
+
+
+@jobs.command(name="serve")
+@click.option("--host", default="127.0.0.1", show_default=True)
+@click.option("--port", type=click.IntRange(min=1, max=65_535), default=8000, show_default=True)
+@click.option("--concurrency", type=click.IntRange(min=1), default=4, show_default=True)
+@click.option(
+    "--artifacts-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path(".fetchkit/artifacts"),
+    show_default=True,
+)
+@click.option("--log-format", type=click.Choice(["text", "json"]), default="text")
+@click.option("--log-level", default="INFO", show_default=True)
+@click.option("--otlp-endpoint", default=None, help="Export traces and metrics via OTLP.")
+def jobs_serve(
+    host: str,
+    port: int,
+    concurrency: int,
+    artifacts_dir: Path,
+    log_format: str,
+    log_level: str,
+    otlp_endpoint: str | None,
+) -> None:
+    """Serve the HTTP control plane and an in-process worker."""
+    from pyfetcher.jobs import configure_job_logging
+
+    try:
+        import uvicorn
+
+        from pyfetcher.integrations.api import create_job_api
+    except ImportError as exc:
+        raise click.ClickException(
+            "job API support requires `pip install 'fetchkit[api]'`"
+        ) from exc
+
+    configure_job_logging(level=log_level.upper(), json_output=log_format == "json")
+    application, telemetry = _job_application(
+        artifacts_dir=artifacts_dir,
+        concurrency=concurrency,
+        otlp_endpoint=otlp_endpoint,
+    )
+    try:
+        uvicorn.run(
+            create_job_api(application),
+            host=host,
+            port=port,
+            log_level=log_level.lower(),
+        )
+    finally:
+        if not application.closed:
+            asyncio.run(application.aclose())
+        if telemetry is not None:
+            telemetry.shutdown()
+
+
 @cli.group()
 def contracts() -> None:
     """Inspect and export versioned cross-language contracts."""

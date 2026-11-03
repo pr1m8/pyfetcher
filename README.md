@@ -172,7 +172,7 @@ tools = await client.get_tools()  # 16 structured tools ready for any agent
 | **Streaming I/O**   | Sync/async response iterators plus bytes, text, sync-generator, and async-generator request content                                     |
 | **Acquisition**     | Direct, yt-dlp, and gallery-dl providers with discovery, native options, provenance, credential references, and progress events       |
 | **Middleware**      | Composable sync/async request-response layers shared by fetch and acquisition services                                                |
-| **Job templates**   | Serializable, versioned pagination, media acquisition, and site-search jobs with dynamic child fan-out                              |
+| **Job runtime**     | Versioned templates plus a service, status store, bounded worker, cancellation, retries, and dynamic child fan-out                 |
 | **Artifacts**       | Blob references and ordered gallery, playlist, search, and page collections without queueing large bytes                            |
 | **Contracts**       | Versioned JSON Schema catalog for generated TypeScript/Zod types, provider discovery, queues, and RPC boundaries                  |
 | **Rate Limiting**   | Per-domain + global token bucket with configurable burst                                                                                  |
@@ -200,6 +200,7 @@ tools = await client.get_tools()  # 16 structured tools ready for any agent
 | **Selectors**    | `[selectors]`    | Parsel-backed CSS/XPath page documents and typed extraction rules             |
 | **Redis queue**  | `[redis]`       | Streams consumer groups, leases, dead letters, and delayed retries           |
 | **Temporal**     | `[temporal]`    | Durable dynamic flows with side effects isolated in activities               |
+| **Job API**      | `[api]`         | FastAPI control plane, worker health, cancellation, paging, and SSE events    |
 | **Telemetry**    | `[observe]`     | OTLP traces and metrics, W3C propagation, Tempo and log correlation          |
 | **Feeds**        | `[feeds]`       | RSS/Atom monitoring with adaptive polling                                   |
 | **Crawler**      | `[pipeline]`    | URL frontier, spider + router, dedup, politeness, sitemap discovery         |
@@ -230,6 +231,7 @@ pip install 'fetchkit[selectors]'      # Typed CSS/XPath page extraction
 pip install 'fetchkit[url-tools]'      # yarl, w3lib canonicalization, public-suffix domains
 pip install 'fetchkit[redis]'          # Redis Streams job queue
 pip install 'fetchkit[temporal]'       # Temporal durable flow runtime
+pip install 'fetchkit[api]'            # FastAPI durable-job control plane
 pip install 'fetchkit[observe]'        # OpenTelemetry OTLP traces + metrics
 pip install 'fetchkit[feeds]'          # RSS/Atom feed parsing
 pip install 'fetchkit[langchain]'      # LangChain MCP client adapters
@@ -407,6 +409,18 @@ Results use `ArtifactRef`, `BlobRef`, and ordered `ArtifactCollection` manifests
 so HTML, images, and videos stay out of queue messages and workflow histories.
 See [durable jobs and reusable flows](docs/durable-flows.rst).
 
+Run a job or flow file directly, or host the same service through FastAPI:
+
+```bash
+pyfetcher jobs run flow.json --concurrency 8 --artifacts-dir ./artifacts
+pyfetcher jobs serve --host 127.0.0.1 --port 8000 --concurrency 8
+```
+
+The bundled queue and result store are process-local. Applications can inject
+Redis Streams and a durable status-store adapter without changing job
+templates; the latter adapter is still an extension point rather than a
+built-in persistent implementation.
+
 ### Browser Profiles & Headers
 
 ```python
@@ -530,6 +544,10 @@ pyfetcher acquire URL -d ./images --provider gallery-dl --events
 # Inspect and validate serialized job templates
 pyfetcher templates list
 pyfetcher templates validate job.json
+
+# Run a flow or host the job API and worker
+pyfetcher jobs run flow.json --concurrency 8
+pyfetcher jobs serve --port 8000
 
 # Export portable contracts for TypeScript, queues, or an API layer
 pyfetcher contracts list --category acquisition

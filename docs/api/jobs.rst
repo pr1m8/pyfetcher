@@ -13,6 +13,21 @@ Jobs, artifacts, and search
 .. automodule:: pyfetcher.jobs.runtime
    :members:
 
+.. automodule:: pyfetcher.jobs.store
+   :members:
+
+.. automodule:: pyfetcher.jobs.service
+   :members:
+
+.. automodule:: pyfetcher.jobs.worker
+   :members:
+
+.. automodule:: pyfetcher.jobs.application
+   :members:
+
+.. automodule:: pyfetcher.jobs.logging
+   :members:
+
 .. automodule:: pyfetcher.jobs.templates
    :members:
 

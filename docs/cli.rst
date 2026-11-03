@@ -89,6 +89,30 @@ it into a local, Redis, Temporal, or future RPC runtime:
    pyfetcher templates list --output json
    pyfetcher templates validate job.json
 
+jobs
+----
+
+Run a serialized job or dynamic flow to completion with shared clients, local
+artifact storage, bounded concurrency, and JSON output:
+
+.. code-block:: bash
+
+   pyfetcher jobs run flow.json
+   pyfetcher jobs run job.json --concurrency 8 --artifacts-dir ./artifacts
+   pyfetcher jobs run flow.json --log-format json
+
+Install ``fetchkit[api]`` to host the HTTP control plane and worker in one
+process:
+
+.. code-block:: bash
+
+   pyfetcher jobs serve --host 127.0.0.1 --port 8000 --concurrency 8
+
+Add ``fetchkit[observe]`` and pass ``--otlp-endpoint`` to either command for
+OpenTelemetry job spans and metrics. The default queue and status store are
+in-memory; inject durable adapters in an application host for restart or
+multi-process durability.
+
 contracts
 ---------
 

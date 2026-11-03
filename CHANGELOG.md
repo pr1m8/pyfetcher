@@ -56,6 +56,13 @@ All notable changes to fetchkit are documented here. The project follows
 - OpenTelemetry job/fetch spans, metrics, W3C child-job propagation, OTLP/Tempo
   export configuration, and standard-log trace correlation.
 - ``pyfetcher templates list`` and ``templates validate`` CLI commands.
+- A transport-neutral job service, queryable status/result store, bounded
+  long-running worker host, application lifecycle container, cooperative
+  cancellation, lease heartbeats, structured worker events, and JSON logs.
+- An optional FastAPI job control plane with health, template discovery,
+  submission, paging, inspection, cancellation, worker state, and SSE events.
+- ``pyfetcher jobs run`` for finite JSON job/flow execution and ``jobs serve``
+  for a lifecycle-owned API and worker process, with optional OTLP export.
 - A deterministic, versioned JSON Schema contract catalog for HTTP,
   extraction, acquisition, media, artifacts, search, queues, and jobs, with
   provider/template discovery, SHA-256 drift checks, split TypeScript-friendly
