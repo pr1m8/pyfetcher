@@ -27,8 +27,24 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Install validation dependencies
+        run: |
+          pdm sync -G dev -G docs -G db -G store -G text -G extractors \
+            -G selectors -G media -G mcp
+
+      - name: Validate release
+        run: |
+          pdm run ruff check src/ tests/ examples/
+          pdm run ruff format --check src/ tests/ examples/
+          pdm run pytest tests/ -q
+          pdm run doc8 docs/
+          LC_ALL=C pdm run sphinx-build -E -W --keep-going -b html docs/ docs/_build/html
+
       - name: Build package
         run: pdm build
+
+      - name: Check package metadata
+        run: pdm run twine check dist/*
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

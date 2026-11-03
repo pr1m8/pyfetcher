@@ -3,6 +3,7 @@
        infra-up infra-down infra-logs \
        migrate migrate-new migrate-down \
        clean build publish \
+       release-check \
        docs docs-serve \
        pipeline
 
@@ -79,7 +80,16 @@ pipeline: ## Run the crawl->scrape->download pipeline
 build: ## Build source and wheel distributions
 	pdm build
 
-publish: build ## Build and publish to PyPI
+release-check: ## Validate tests, docs, and distribution metadata
+	pdm run ruff check src/ tests/ examples/
+	pdm run ruff format --check src/ tests/ examples/
+	pdm run pytest tests/ -q
+	pdm run doc8 docs/
+	LC_ALL=C pdm run sphinx-build -E -W --keep-going -b html docs/ docs/_build/html
+	pdm build
+	pdm run twine check dist/*
+
+publish: release-check ## Validate, build, and publish to PyPI
 	pdm publish
 
 # ─── MCP Server ────────────────────────────────────────────────────────
@@ -99,7 +109,8 @@ clean: ## Remove build artifacts and caches
 
 # ─── Documentation ────────────────────────────────────────────────────
 docs: ## Build Sphinx documentation
-	pdm run sphinx-build -b html docs/ docs/_build/html
+	pdm run doc8 docs/
+	LC_ALL=C pdm run sphinx-build -E -W --keep-going -b html docs/ docs/_build/html
 
 docs-serve: docs ## Build and serve docs locally
 	python -m http.server -d docs/_build/html 8080

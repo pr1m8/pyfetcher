@@ -34,9 +34,9 @@ jobs:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: |
-          pdm install -G all
-          pip install -r docs/requirements.txt
+        run: pdm sync -G docs
 
       - name: Build docs
-        run: sphinx-build -b html docs/ docs/_build/html -W
+        run: |
+          pdm run doc8 docs/
+          LC_ALL=C pdm run sphinx-build -E -W --keep-going -b html docs/ docs/_build/html

@@ -33,11 +33,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pdm lock -G dev -G db -G text -G extractors -G mcp -G store -G docs
-          pdm install -G dev -G db -G text -G extractors -G mcp -G store
+          pdm lock -G dev -G db -G text -G extractors -G selectors \
+            -G media -G mcp -G store -G docs
+          pdm install -G dev -G db -G text -G extractors -G selectors \
+            -G media -G mcp -G store
 
       - name: Run tests
-        run: pdm run pytest tests/ -v --tb=short --cov=pyfetcher --cov-report=xml
+        run: pdm run pytest tests/ -v --tb=short --cov=pyfetcher --cov-report=xml --cov-report=term
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest'
@@ -67,7 +69,48 @@ jobs:
           pdm install -G dev
 
       - name: Run ruff check
-        run: pdm run ruff check src/ tests/
+        run: pdm run ruff check src/ tests/ examples/
 
       - name: Run ruff format check
-        run: pdm run ruff format --check src/ tests/
+        run: pdm run ruff format --check src/ tests/ examples/
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install PDM
+        uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: "3.13"
+
+      - name: Install build validation dependencies
+        run: pdm install -G dev
+
+      - name: Build distributions
+        run: pdm build
+
+      - name: Check distribution metadata
+        run: pdm run twine check dist/*
+
+      - name: Smoke test the installed wheel
+        run: |
+          python -m venv /tmp/fetchkit-wheel-smoke
+          /tmp/fetchkit-wheel-smoke/bin/python -m pip install dist/*.whl
+          cd /tmp
+          /tmp/fetchkit-wheel-smoke/bin/python - <<'PY'
+          import importlib.metadata
+
+          import pyfetcher
+          from pyfetcher import AsyncFetchClient
+          from pyfetcher.protocol import build_protocol_catalog
+
+          assert importlib.metadata.version("fetchkit") == pyfetcher.__version__
+          assert AsyncFetchClient is not None
+          assert len(build_protocol_catalog().schemas) >= 1
+          PY
