@@ -2,13 +2,16 @@
 
 import os
 import sys
+import tomllib
+from pathlib import Path
 
 sys.path.insert(0, os.path.abspath("../src"))
 
 project = "fetchkit"
 copyright = "2026, Will"
 author = "Will"
-release = "0.3.1"
+with (Path(__file__).parents[1] / "pyproject.toml").open("rb") as pyproject_file:
+    release = tomllib.load(pyproject_file)["project"]["version"]
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -88,6 +91,8 @@ autodoc_mock_imports = [
     "playwright",
     "feedparser",
     "textual",
+    "fastmcp",
+    "mcp",
 ]
 
 todo_include_todos = True

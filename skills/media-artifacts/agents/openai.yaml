@@ -1,0 +1,4 @@
+interface:
+  display_name: "fetchkit Media and Artifacts"
+  short_description: "Normalize media, byte streams, and artifacts"
+  default_prompt: "Use $media-artifacts to design a bounded media metadata, processing, and blob workflow."

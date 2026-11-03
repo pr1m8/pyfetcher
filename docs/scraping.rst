@@ -4,6 +4,11 @@ Scraping
 pyfetcher provides a comprehensive set of scraping utilities built on
 BeautifulSoup.
 
+For chainable CSS and XPath, typed selector rules, URL patterns, filtered link
+discovery, responsive images, and reusable collections, see
+:doc:`page-extraction`. These dependency-light BeautifulSoup helpers remain
+available for small scripts and backward compatibility.
+
 CSS Selector Extraction
 -----------------------
 

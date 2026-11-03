@@ -1,0 +1,4 @@
+interface:
+  display_name: "fetchkit Typed Extraction"
+  short_description: "Build typed CSS and XPath page extractors"
+  default_prompt: "Use $typed-page-extraction to design a reusable typed page extraction workflow."

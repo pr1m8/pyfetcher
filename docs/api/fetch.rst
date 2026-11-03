@@ -1,6 +1,9 @@
 Fetch
 =====
 
+.. automodule:: pyfetcher.fetch.client
+   :members:
+
 .. automodule:: pyfetcher.fetch.service
    :members:
 

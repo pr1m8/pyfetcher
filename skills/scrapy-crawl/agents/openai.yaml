@@ -1,0 +1,4 @@
+interface:
+  display_name: "fetchkit Scrapy Crawl"
+  short_description: "Integrate fetchkit with Scrapy crawl engines"
+  default_prompt: "Use $scrapy-crawl to connect fetchkit requests to an existing Scrapy crawl engine."

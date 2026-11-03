@@ -1,7 +1,7 @@
 """Pipeline demo for pyfetcher.
 
 Demonstrates seeding URLs and running the crawl-scrape-download pipeline.
-Requires: pip install 'pyfetcher[pipeline]'
+Requires: pip install 'fetchkit[pipeline]'
 Requires: make infra-up && make migrate
 """
 

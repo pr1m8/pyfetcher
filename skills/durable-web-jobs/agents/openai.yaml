@@ -1,0 +1,4 @@
+interface:
+  display_name: "fetchkit Durable Jobs"
+  short_description: "Build versioned durable web job workflows"
+  default_prompt: "Use $durable-web-jobs to design a serializable, observable, and retry-safe web job."

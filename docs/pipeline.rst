@@ -1,7 +1,7 @@
 Pipeline
 ========
 
-pyfetcher includes an event-driven pipeline that connects three stages:
+pyfetcher includes a database-backed pipeline that connects three stages:
 
 1. **Crawl** -- Discover URLs, fetch pages, store in Postgres
 2. **Scrape** -- Extract content, metadata, and media references
@@ -19,8 +19,8 @@ Architecture
            Crawl["🔍 Crawl Stage"]
            Scrape["📄 Scrape Stage"]
            Download["💾 Download Stage"]
-           Crawl -- "PG NOTIFY" --> Scrape
-           Scrape -- "PG NOTIFY" --> Download
+           Crawl -- "durable job" --> Scrape
+           Scrape -- "durable job" --> Download
        end
 
        Crawl --> Pages[(pages table)]
@@ -66,8 +66,14 @@ Data Flow
 Each stage:
 
 - Claims jobs from Postgres using ``SELECT FOR UPDATE SKIP LOCKED``
-- Processes them with configurable concurrency
-- Writes results and emits ``NOTIFY`` for the next stage
+- Processes them with independent, configurable worker slots
+- Writes downstream job rows and emits ``NOTIFY`` for external listeners
+- Owns and closes any HTTP or acquisition clients it creates
+
+The download stage uses :class:`pyfetcher.AcquisitionService`. A job may set
+``payload.provider`` to ``direct``, ``yt_dlp``, ``gallery_dl``, or the name of
+a provider registered on an injected service. Galleries and playlists create
+one ``media_assets`` row per downloaded item.
 
 Quick Start
 -----------

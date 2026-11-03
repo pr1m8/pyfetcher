@@ -5,11 +5,17 @@ API Reference
    :maxdepth: 2
 
    contracts
+   documents
    headers
    fetch
+   acquisition
    transports
+   integrations
+   jobs
+   protocol
    scrape
    metadata
+   media
    download
    ratelimit
    crawler

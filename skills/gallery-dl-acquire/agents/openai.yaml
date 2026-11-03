@@ -1,0 +1,4 @@
+interface:
+  display_name: "fetchkit gallery-dl Acquire"
+  short_description: "Acquire image galleries through gallery-dl"
+  default_prompt: "Use $gallery-dl-acquire to design a typed gallery-dl metadata or download workflow."

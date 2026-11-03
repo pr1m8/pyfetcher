@@ -1,0 +1,4 @@
+interface:
+  display_name: "fetchkit yt-dlp Acquire"
+  short_description: "Acquire video and audio through yt-dlp"
+  default_prompt: "Use $yt-dlp-acquire to design a typed yt-dlp metadata or download workflow."

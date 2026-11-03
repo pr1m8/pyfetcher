@@ -1,0 +1,4 @@
+interface:
+  display_name: "fetchkit HTTP Fetch"
+  short_description: "Build pooled HTTP and streaming fetch workflows"
+  default_prompt: "Use $http-fetch to build a pooled, retry-aware fetchkit HTTP workflow."

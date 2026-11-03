@@ -1,7 +1,7 @@
 """Content extraction examples for pyfetcher.
 
 Demonstrates article text extraction, HTML conversion, and media metadata.
-Requires: pip install 'pyfetcher[extractors]'
+Requires: pip install 'fetchkit[extractors]'
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ def trafilatura_extraction() -> None:
         else:
             print("  No text extracted")
     except ImportError:
-        print("  Install: pip install 'pyfetcher[extractors]'")
+        print("  Install: pip install 'fetchkit[extractors]'")
 
 
 def markdown_conversion() -> None:
@@ -56,7 +56,7 @@ def markdown_conversion() -> None:
         md = html_to_markdown(SAMPLE_HTML)
         print(f"  {md[:400]}...")
     except ImportError:
-        print("  Install: pip install 'pyfetcher[extractors]'")
+        print("  Install: pip install 'fetchkit[extractors]'")
 
 
 def plaintext_conversion() -> None:
@@ -68,14 +68,12 @@ def plaintext_conversion() -> None:
         text = html_to_plaintext(SAMPLE_HTML)
         print(f"  {text[:400]}...")
     except ImportError:
-        print("  Install: pip install 'pyfetcher[extractors]'")
+        print("  Install: pip install 'fetchkit[extractors]'")
 
 
 def media_metadata() -> None:
     """Show media metadata extraction capabilities."""
     print("\n=== Media Metadata Extraction ===")
-    from pyfetcher.extractors.media_meta import extract_media_metadata
-
     print("  Supported formats:")
     print("    Audio: .mp3, .flac, .ogg, .m4a, .wav (via mutagen)")
     print("    Video: .mp4, .mkv, .avi, .mov, .webm (via pymediainfo)")

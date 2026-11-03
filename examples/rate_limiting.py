@@ -19,7 +19,7 @@ def basic_rate_limiting() -> None:
         start = time.monotonic()
         wait = limiter.acquire("https://example.com/page")
         elapsed = time.monotonic() - start
-        print(f"  Request {i+1}: waited {elapsed:.3f}s (reported: {wait:.3f}s)")
+        print(f"  Request {i + 1}: waited {elapsed:.3f}s (reported: {wait:.3f}s)")
 
 
 def per_domain_policies() -> None:
@@ -36,13 +36,13 @@ def per_domain_policies() -> None:
     print("  Fast domain (100 req/s):")
     for i in range(3):
         wait = limiter.acquire("https://api.fast.com/data")
-        print(f"    Request {i+1}: wait={wait:.4f}s")
+        print(f"    Request {i + 1}: wait={wait:.4f}s")
 
     print("  Slow domain (1 req/s):")
     for i in range(3):
         start = time.monotonic()
         limiter.acquire("https://api.slow.com/data")
-        print(f"    Request {i+1}: took {time.monotonic() - start:.3f}s")
+        print(f"    Request {i + 1}: took {time.monotonic() - start:.3f}s")
 
 
 def with_fetch_service() -> None:

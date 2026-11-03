@@ -21,7 +21,7 @@ def create_spider() -> Spider:
         titles = extract_text(html, "h1")
         links = extract_links(html, base_url=url, same_domain_only=True)
         return SpiderResult(
-            discovered_urls=[l.url for l in links],
+            discovered_urls=[link.url for link in links],
             items=[{"url": url, "title": titles[0] if titles else None, "type": "blog_post"}],
         )
 
@@ -29,13 +29,13 @@ def create_spider() -> Spider:
         """Handle listing/index pages -- just follow links."""
         html = response.text or ""
         links = extract_links(html, base_url=url, same_domain_only=True)
-        return SpiderResult(discovered_urls=[l.url for l in links])
+        return SpiderResult(discovered_urls=[link.url for link in links])
 
     async def default_handler(url: str, response: FetchResponse) -> SpiderResult:
         """Default handler for unmatched URLs."""
         html = response.text or ""
         links = extract_links(html, base_url=url, same_domain_only=True)
-        return SpiderResult(discovered_urls=[l.url for l in links[:10]])
+        return SpiderResult(discovered_urls=[link.url for link in links[:10]])
 
     spider.router.add(r"/blog/\d{4}/", handle_blog_post)
     spider.router.add(r"/blog/?$", handle_listing)

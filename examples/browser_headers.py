@@ -55,7 +55,7 @@ def rotating_headers_example() -> None:
             browser = "Edge"
         else:
             browser = "Unknown"
-        print(f"  [{i+1}] {browser}: {ua[:80]}...")
+        print(f"  [{i + 1}] {browser}: {ua[:80]}...")
 
 
 def random_user_agent_examples() -> None:

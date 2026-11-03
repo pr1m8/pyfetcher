@@ -49,6 +49,42 @@ Key Features
 
 .. grid:: 2
 
+   .. grid-item-card:: Reusable Clients
+      :link: clients
+      :link-type: doc
+
+      Lifecycle-managed sync and async clients with connection pooling,
+      HTTP/2 negotiation, streaming I/O, FastAPI injection, and bounded
+      iteration over large generators.
+
+   .. grid-item-card:: Adapter Boundaries
+      :link: adapters
+      :link-type: doc
+
+      Custom HTTP transports, Scrapy engine bridging, provider-neutral
+      acquisition, middleware, and focused skill boundaries.
+
+   .. grid-item-card:: Durable Jobs and Flows
+      :link: durable-flows
+      :link-type: doc
+
+      Versioned templates, dynamic pagination and collection fan-out, portable
+      artifacts, WebPoet, Redis Streams, Temporal, and OpenTelemetry.
+
+   .. grid-item-card:: Cross-language Contracts
+      :link: contracts
+      :link-type: doc
+
+      Versioned JSON Schema for generated TypeScript/Zod clients, provider
+      discovery, durable messages, and future API or RPC boundaries.
+
+   .. grid-item-card:: Content Acquisition
+      :link: acquisition
+      :link-type: doc
+
+      Discover and select direct HTTP, yt-dlp, or gallery-dl providers with
+      typed policy, credential references, provenance, and progress events.
+
    .. grid-item-card:: 🤖 MCP Server
       :link: mcp
       :link-type: doc
@@ -58,11 +94,11 @@ Key Features
       Claude Code, and LangChain.
 
    .. grid-item-card:: 🔍 Web Scraping
-      :link: scraping
+      :link: page-extraction
       :link-type: doc
 
-      CSS selectors, link harvesting, form parsing, table extraction,
-      robots.txt, sitemap parsing, and readable text extraction.
+      Typed CSS/XPath rules, link filtering, URL patterns, responsive images,
+      gallery collections, forms, tables, robots, and sitemaps.
 
    .. grid-item-card:: 🌐 Browser Headers
       :link: headers
@@ -76,9 +112,8 @@ Key Features
       :link: pipeline
       :link-type: doc
 
-      Event-driven crawl → scrape → download stages via Postgres
-      LISTEN/NOTIFY. URL frontier with dedup, politeness, and
-      RSS/Atom feed monitoring.
+      Concurrent crawl → scrape → download workers over durable Postgres
+      jobs. URL frontier with dedup, politeness, and RSS/Atom feed monitoring.
 
    .. grid-item-card:: 📄 Content Extraction
       :link: api/extractors_api
@@ -100,6 +135,11 @@ Key Features
    :hidden:
 
    quickstart
+   clients
+   acquisition
+   adapters
+   durable-flows
+   contracts
    mcp
 
 .. toctree::
@@ -109,6 +149,8 @@ Key Features
 
    headers
    scraping
+   urls
+   page-extraction
 
 .. toctree::
    :maxdepth: 2

@@ -76,3 +76,31 @@ Download a file:
 .. code-block:: bash
 
    pyfetcher download https://example.com/file.pdf ./file.pdf
+
+templates
+---------
+
+Inspect the built-in versioned job catalog and validate JSON before enqueueing
+it into a local, Redis, Temporal, or future RPC runtime:
+
+.. code-block:: bash
+
+   pyfetcher templates list
+   pyfetcher templates list --output json
+   pyfetcher templates validate job.json
+
+contracts
+---------
+
+Inspect or export the versioned JSON Schema catalog used by TypeScript,
+workers, queues, and future RPC layers:
+
+.. code-block:: bash
+
+   pyfetcher contracts list
+   pyfetcher contracts list --category job --output json
+   pyfetcher contracts export ./generated/fetchkit-contracts.json
+   pyfetcher contracts export ./generated/fetchkit --split
+
+Use ``--load-provider-plugins`` only when installed third-party acquisition
+providers should be imported and included in the provider capability catalog.

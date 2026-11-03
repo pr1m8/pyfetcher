@@ -82,7 +82,7 @@ def pipeline_integration_example() -> None:
     is configured via PyfetcherConfig and used automatically by the
     crawl stage.
 
-    Install: pip install 'pyfetcher[pipeline]'
+    Install: pip install 'fetchkit[pipeline]'
     """
     print("\n=== Pipeline Integration ===")
     print("  The pipeline uses the configured backend for all crawl requests.")

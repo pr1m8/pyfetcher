@@ -1,0 +1,4 @@
+interface:
+  display_name: "fetchkit URL Workflows"
+  short_description: "Normalize and adapt typed URL workflows"
+  default_prompt: "Use $url-workflows to design canonical URL adapters, rules, patterns, and templates."
