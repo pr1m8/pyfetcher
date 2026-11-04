@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "api", "browser", "cloudscraper", "curl", "db", "dev", "docs", "downloaders", "extractors", "feeds", "full", "langchain", "mcp", "media", "metadata", "observe", "pipeline", "redis", "scrapy", "scrapy-poet", "selectors", "store", "temporal", "text", "tui", "url-tools", "web-poet"]
+groups = ["default", "api", "browser", "cloudscraper", "curl", "db", "dev", "docs", "downloaders", "extractors", "feeds", "full", "grpc", "langchain", "mcp", "media", "metadata", "observe", "pipeline", "redis", "scrapy", "scrapy-poet", "selectors", "store", "temporal", "text", "tui", "url-tools", "web-poet"]
 strategy = []
 lock_version = "4.5.1"
-content_hash = "sha256:ac861591b9056e1aabfd8a729e6dcfdbdab0799de39707e323a5d0ab827d883a"
+content_hash = "sha256:f74d34bf653a2abda821eac23841f6153d6ad3870d15526f4162ec83bfb0413b"
 
 [[metadata.targets]]
 requires_python = ">=3.13"

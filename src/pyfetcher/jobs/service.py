@@ -1,7 +1,7 @@
 """Transport-neutral durable job control plane.
 
 Purpose:
-    Give Python callers, HTTP APIs, CLIs, and future gRPC adapters one service
+    Give Python callers, HTTP APIs, CLIs, and gRPC adapters one service
     for submission, inspection, cancellation, queue health, and discovery.
 """
 

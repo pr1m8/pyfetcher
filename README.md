@@ -174,7 +174,7 @@ tools = await client.get_tools()  # 16 structured tools ready for any agent
 | **Middleware**      | Composable sync/async request-response layers shared by fetch and acquisition services                                                |
 | **Job runtime**     | Versioned templates plus a service, status store, bounded worker, cancellation, retries, and dynamic child fan-out                 |
 | **Artifacts**       | Blob references and ordered gallery, playlist, search, and page collections without queueing large bytes                            |
-| **Contracts**       | Versioned JSON Schema catalog for generated TypeScript/Zod types, provider discovery, queues, and RPC boundaries                  |
+| **Contracts**       | Versioned JSON Schema, generated TypeScript clients, provider discovery, queues, protobuf, and gRPC service bindings             |
 | **Rate Limiting**   | Per-domain + global token bucket with configurable burst                                                                                  |
 | **Retry**           | Exponential backoff via Tenacity with configurable status codes                                                                           |
 | **Scraping**        | BeautifulSoup helpers plus typed Parsel CSS/XPath rules, URL/link filtering, images, and collections                                    |
@@ -230,6 +230,7 @@ pip install 'fetchkit[scrapy-poet]'    # WebPoet + full Scrapy integration
 pip install 'fetchkit[selectors]'      # Typed CSS/XPath page extraction
 pip install 'fetchkit[url-tools]'      # yarl, w3lib canonicalization, public-suffix domains
 pip install 'fetchkit[redis]'          # Redis queue + durable job status store
+pip install 'fetchkit[grpc]'           # gRPC job control plane + protobuf framing
 pip install 'fetchkit[temporal]'       # Temporal durable flow runtime
 pip install 'fetchkit[api]'            # FastAPI durable-job control plane
 pip install 'fetchkit[observe]'        # OpenTelemetry OTLP traces + metrics
@@ -373,14 +374,18 @@ maintaining a second set of request and result types by hand:
 ```bash
 pyfetcher contracts list
 pyfetcher contracts export ./generated/fetchkit --split
+pyfetcher contracts export ./generated/fetchkit-ts --typescript
+pyfetcher contracts proto ./generated/proto/jobs.proto
 ```
 
 The manifest covers HTTP, extraction, acquisition, media, artifacts, search,
 jobs, queues, and built-in template inputs. It also reports provider
-capabilities and custom provider option schemas. Each `name@version` contract
-has a stable `$id` and checksum suitable for generated TypeScript/Zod types and
-CI drift checks. Runtime callables, byte iterators, clients, and resolved
-credentials remain Python-side. See the
+capabilities, custom provider option schemas, and RPC service bindings. The
+TypeScript export adds self-contained types, a typed control-plane client,
+runtime descriptors, JSON schemas, and the packaged proto. Each
+`name@version` contract has a stable `$id` and checksum suitable for CI drift
+checks. Runtime callables, byte iterators, clients, and resolved credentials
+remain Python-side. See the
 [cross-language contract guide](docs/contracts.rst).
 
 ### Reusable pagination and media jobs
@@ -414,6 +419,7 @@ Run a job or flow file directly, or host the same service through FastAPI:
 ```bash
 pyfetcher jobs run flow.json --concurrency 8 --artifacts-dir ./artifacts
 pyfetcher jobs serve --host 127.0.0.1 --port 8000 --concurrency 8
+pyfetcher jobs grpc-serve --host 127.0.0.1 --port 50051
 FETCHKIT_REDIS_URL=redis://localhost:6379/0 pyfetcher jobs serve
 ```
 
@@ -555,6 +561,7 @@ FETCHKIT_REDIS_URL=redis://localhost:6379/0 pyfetcher jobs serve
 # Export portable contracts for TypeScript, queues, or an API layer
 pyfetcher contracts list --category acquisition
 pyfetcher contracts export ./generated/fetchkit --split
+pyfetcher contracts export ./generated/fetchkit-ts --typescript
 ```
 
 ## Pipeline

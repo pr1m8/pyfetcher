@@ -52,6 +52,9 @@ Quote extras in shell commands so brackets are not interpreted by the shell:
    * - ``redis``
      - ``fetchkit[redis]``
      - Redis Streams queue and durable job status store
+   * - ``grpc``
+     - ``fetchkit[grpc]``
+     - gRPC job control plane and protobuf framing
    * - ``temporal``
      - ``fetchkit[temporal]``
      - Temporal durable-flow runtime

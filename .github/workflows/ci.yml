@@ -34,9 +34,9 @@ jobs:
       - name: Install dependencies
         run: |
           pdm lock -G dev -G db -G text -G extractors -G selectors \
-            -G media -G mcp -G store -G docs
+            -G media -G mcp -G store -G grpc -G docs
           pdm install -G dev -G db -G text -G extractors -G selectors \
-            -G media -G mcp -G store
+            -G media -G mcp -G store -G grpc
 
       - name: Run tests
         run: pdm run pytest tests/ -v --tb=short --cov=pyfetcher --cov-report=xml --cov-report=term

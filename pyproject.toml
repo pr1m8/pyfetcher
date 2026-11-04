@@ -74,6 +74,7 @@ web-poet = ["web-poet>=0.24.1"]
 scrapy-poet = ["fetchkit[scrapy,web-poet]", "scrapy-poet>=0.27"]
 selectors = ["parsel>=1.10"]
 redis = ["redis>=5.2"]
+grpc = ["grpcio>=1.76", "protobuf>=6.31"]
 temporal = ["temporalio[pydantic,opentelemetry]>=1.27"]
 api = ["fastapi>=0.115", "uvicorn>=0.34"]
 observe = [
@@ -96,7 +97,7 @@ docs = [
   "sphinx-design>=0.6",
 ]
 full = [
-  "fetchkit[tui,metadata,curl,cloudscraper,pipeline,downloaders,extractors,media,browser,scrapy,scrapy-poet,selectors,redis,temporal,api,observe,feeds,text,url-tools,mcp,langchain]",
+  "fetchkit[tui,metadata,curl,cloudscraper,pipeline,downloaders,extractors,media,browser,scrapy,scrapy-poet,selectors,redis,grpc,temporal,api,observe,feeds,text,url-tools,mcp,langchain]",
 ]
 dev = [
   "pytest>=8.0",

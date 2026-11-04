@@ -76,8 +76,8 @@ Key Features
       :link: contracts
       :link-type: doc
 
-      Versioned JSON Schema for generated TypeScript/Zod clients, provider
-      discovery, durable messages, and future API or RPC boundaries.
+      Versioned JSON Schema, generated TypeScript clients, provider discovery,
+      durable messages, and gRPC service bindings.
 
    .. grid-item-card:: Content Acquisition
       :link: acquisition

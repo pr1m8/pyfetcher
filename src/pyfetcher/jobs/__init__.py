@@ -1,6 +1,7 @@
 """Serializable jobs, template registries, queues, and local execution."""
 
 from pyfetcher.jobs.application import JobApplication
+from pyfetcher.jobs.events import WorkerEventBroker
 from pyfetcher.jobs.logging import JsonLogFormatter, configure_job_logging
 from pyfetcher.jobs.models import (
     FlowRequest,
@@ -92,6 +93,7 @@ __all__ = [
     "TemplateRegistry",
     "WorkerConfig",
     "WorkerEvent",
+    "WorkerEventBroker",
     "WorkerEventSink",
     "WorkerSnapshot",
     "configure_job_logging",

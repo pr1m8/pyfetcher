@@ -81,7 +81,7 @@ templates
 ---------
 
 Inspect the built-in versioned job catalog and validate JSON before enqueueing
-it into a local, Redis, Temporal, or future RPC runtime:
+it into a local, Redis, Temporal, HTTP, or gRPC runtime:
 
 .. code-block:: bash
 
@@ -122,18 +122,29 @@ OpenTelemetry job spans and metrics. The default queue and status store are
 in-memory; ``--redis-url`` or ``FETCHKIT_REDIS_URL`` selects the built-in Redis
 Streams queue and durable Redis job store.
 
+Install ``fetchkit[grpc]`` to host the same control plane over gRPC. The CLI
+listener is intended for local or trusted-network development; build a Python
+host with TLS credentials and interceptors for production:
+
+.. code-block:: bash
+
+   pyfetcher jobs grpc-serve --host 127.0.0.1 --port 50051
+
 contracts
 ---------
 
 Inspect or export the versioned JSON Schema catalog used by TypeScript,
-workers, queues, and future RPC layers:
+workers, queues, and RPC layers:
 
 .. code-block:: bash
 
    pyfetcher contracts list
+   pyfetcher contracts services
    pyfetcher contracts list --category job --output json
    pyfetcher contracts export ./generated/fetchkit-contracts.json
    pyfetcher contracts export ./generated/fetchkit --split
+   pyfetcher contracts export ./generated/fetchkit-ts --typescript
+   pyfetcher contracts proto ./generated/proto/jobs.proto
 
 Use ``--load-provider-plugins`` only when installed third-party acquisition
 providers should be imported and included in the provider capability catalog.

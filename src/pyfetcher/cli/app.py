@@ -820,6 +820,70 @@ def jobs_serve(
             telemetry.shutdown()
 
 
+@jobs.command(name="grpc-serve")
+@click.option("--host", default="127.0.0.1", show_default=True)
+@click.option("--port", type=click.IntRange(min=1, max=65_535), default=50051, show_default=True)
+@click.option("--concurrency", type=click.IntRange(min=1), default=4, show_default=True)
+@click.option(
+    "--artifacts-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path(".fetchkit/artifacts"),
+    show_default=True,
+)
+@click.option("--log-format", type=click.Choice(["text", "json"]), default="text")
+@click.option("--log-level", default="INFO", show_default=True)
+@click.option("--otlp-endpoint", default=None, help="Export traces and metrics via OTLP.")
+@click.option(
+    "--redis-url",
+    envvar="FETCHKIT_REDIS_URL",
+    show_envvar=True,
+    help="Use Redis Streams plus the durable Redis job store.",
+)
+def jobs_grpc_serve(
+    host: str,
+    port: int,
+    concurrency: int,
+    artifacts_dir: Path,
+    log_format: str,
+    log_level: str,
+    otlp_endpoint: str | None,
+    redis_url: str | None,
+) -> None:
+    """Serve the gRPC job control plane and an in-process worker."""
+    from pyfetcher.jobs import configure_job_logging
+
+    try:
+        from pyfetcher.integrations.grpc import create_job_grpc_server
+    except ImportError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    configure_job_logging(level=log_level.upper(), json_output=log_format == "json")
+
+    async def run() -> None:
+        application, telemetry = _job_application(
+            artifacts_dir=artifacts_dir,
+            concurrency=concurrency,
+            otlp_endpoint=otlp_endpoint,
+            redis_url=redis_url,
+        )
+        server = create_job_grpc_server(application, address=f"{host}:{port}")
+        try:
+            await server.start()
+            click.echo(f"gRPC job control plane listening on {host}:{server.bound_port}")
+            await server.wait_for_termination()
+        finally:
+            await server.aclose()
+            if telemetry is not None:
+                telemetry.shutdown()
+
+    try:
+        asyncio.run(run())
+    except KeyboardInterrupt:  # pragma: no cover - interactive shutdown
+        return
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+
+
 @cli.group()
 def contracts() -> None:
     """Inspect and export versioned cross-language contracts."""
@@ -892,12 +956,54 @@ def contracts_list(
             click.echo(f"{item.key}\t{item.category}\t{item.role}\t{item.title}")
 
 
+@contracts.command(name="services")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Choice(["table", "json"]),
+    default="table",
+    show_default=True,
+)
+def contracts_services(output: str) -> None:
+    """List versioned RPC services and method bindings."""
+    try:
+        catalog = _protocol_catalog()
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+    if output == "json":
+        click.echo(
+            json.dumps(
+                [service.model_dump(mode="json") for service in catalog.services],
+                indent=2,
+            )
+        )
+        return
+    for service in catalog.services:
+        click.echo(f"{service.key}")
+        for method in service.methods:
+            click.echo(
+                f"  {method.name}\t{method.cardinality}\t"
+                f"{method.request_contract or '-'} -> {method.response_contract}"
+            )
+
+
 @contracts.command(name="export")
 @click.argument("destination", type=click.Path(path_type=Path))
 @click.option(
     "--split",
     is_flag=True,
     help="Write manifest.json plus one JSON Schema file per contract.",
+)
+@click.option(
+    "--typescript",
+    is_flag=True,
+    help="Write schemas, TypeScript types, RPC client interfaces, and protobuf.",
+)
+@click.option(
+    "--package-name",
+    default="@fetchkit/protocol",
+    show_default=True,
+    help="Generated TypeScript package name.",
 )
 @click.option(
     "--load-provider-plugins",
@@ -907,17 +1013,42 @@ def contracts_list(
 def contracts_export(
     destination: Path,
     split: bool,
+    typescript: bool,
+    package_name: str,
     load_provider_plugins: bool,
 ) -> None:
     """Export a deterministic schema, provider, and template catalog."""
-    from pyfetcher.protocol import export_protocol_catalog
+    from pyfetcher.protocol import export_protocol_catalog, export_typescript_protocol
 
     try:
+        if split and typescript:
+            raise click.UsageError("--split and --typescript are mutually exclusive")
         catalog = _protocol_catalog(load_provider_plugins=load_provider_plugins)
-        paths = export_protocol_catalog(catalog, destination, split=split)
+        paths = (
+            export_typescript_protocol(
+                catalog,
+                destination,
+                package_name=package_name,
+            )
+            if typescript
+            else export_protocol_catalog(catalog, destination, split=split)
+        )
     except (OSError, TypeError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
     click.secho(f"Exported {len(catalog.schemas)} contracts to {paths[0]}", fg="green")
+
+
+@contracts.command(name="proto")
+@click.argument("destination", type=click.Path(path_type=Path))
+def contracts_proto(destination: Path) -> None:
+    """Export the gRPC job-control-plane protobuf definition."""
+    from pyfetcher.protocol import export_grpc_proto
+
+    try:
+        path = export_grpc_proto(destination)
+    except OSError as exc:
+        raise click.ClickException(str(exc)) from exc
+    click.secho(f"Exported gRPC definition to {path}", fg="green")
 
 
 def main() -> None:

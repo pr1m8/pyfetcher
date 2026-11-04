@@ -28,6 +28,9 @@ Jobs, artifacts, and search
 .. automodule:: pyfetcher.jobs.logging
    :members:
 
+.. automodule:: pyfetcher.jobs.events
+   :members:
+
 .. automodule:: pyfetcher.jobs.templates
    :members:
 

@@ -217,6 +217,20 @@ Both commands assemble pooled fetch and acquisition clients once for the
 process. Site-search providers and custom templates remain application-owned
 registrations; the stock CLI does not guess site-specific configuration.
 
+The optional gRPC adapter delegates to the same application, service, and
+worker rather than creating another execution model:
+
+.. code-block:: bash
+
+   python -m pip install 'fetchkit[grpc]'
+   pyfetcher jobs grpc-serve --host 127.0.0.1 --port 50051
+
+Pair it with ``FETCHKIT_REDIS_URL`` for shared delivery and job state. The
+versioned protocol catalog maps RPC methods to JSON contracts, and
+``pyfetcher contracts export ./generated/fetchkit --typescript`` generates
+TypeScript types and a typed client interface. Production gRPC hosts should
+configure TLS credentials and authentication interceptors explicitly.
+
 WebPoet page objects
 --------------------
 
@@ -358,6 +372,6 @@ Delivery guarantees and non-goals
   hosts respectively.
 * Templates are versioned. Changing incompatible input/output semantics means
   registering a new version rather than mutating old queued jobs.
-* The HTTP adapter uses the transport-neutral service boundary. gRPC, a web
-  UI, TUI workflow inspection, and stronger distributed control-plane
-  adapters remain planned rather than implemented.
+* HTTP and gRPC adapters use the transport-neutral service boundary. A web UI,
+  TUI workflow inspection, and stronger distributed control-plane adapters
+  remain planned rather than implemented.

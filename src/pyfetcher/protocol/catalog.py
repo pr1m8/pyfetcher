@@ -95,13 +95,21 @@ from pyfetcher.media import (
     VideoStreamInfo,
 )
 from pyfetcher.metadata.models import FaviconLink, OpenGraphMetadata, PageMetadata
+from pyfetcher.protocol.rpc import (
+    JOB_CONTROL_PLANE_SERVICE,
+    JobListRequest,
+    JobLookupRequest,
+    RpcService,
+    TemplateCatalog,
+    WorkerEventSubscription,
+)
 from pyfetcher.search import SearchHit, SearchRequest, SearchResult
 from pyfetcher.streams import ByteStreamInfo
 
 type ContractRole = Literal["input", "output", "event", "value", "policy"]
 
 SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
-PROTOCOL_VERSION = "1"
+PROTOCOL_VERSION = "2"
 _NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_.-]*$")
 
 
@@ -175,6 +183,7 @@ class ProtocolCatalog(BaseModel):
     schemas: tuple[ContractSchema, ...]
     providers: tuple[ProviderCapabilities, ...] = ()
     templates: tuple[TemplateDescriptor, ...] = ()
+    services: tuple[RpcService, ...] = ()
 
     @model_validator(mode="after")
     def _validate_unique_entries(self) -> ProtocolCatalog:
@@ -187,6 +196,19 @@ class ProtocolCatalog(BaseModel):
         template_keys = [item.ref.key for item in self.templates]
         if len(template_keys) != len(set(template_keys)):
             raise ValueError("protocol catalog contains duplicate template keys")
+        service_keys = [item.key for item in self.services]
+        if len(service_keys) != len(set(service_keys)):
+            raise ValueError("protocol catalog contains duplicate service keys")
+        available_contracts = set(schema_keys)
+        for service in self.services:
+            for method in service.methods:
+                referenced = (method.request_contract, method.response_contract)
+                missing = [key for key in referenced if key and key not in available_contracts]
+                if missing:
+                    raise ValueError(
+                        f"RPC method {service.name}/{method.name} references unknown "
+                        f"contracts: {', '.join(missing)}"
+                    )
         return self
 
     def schema_for(self, key: str) -> ContractSchema:
@@ -278,6 +300,15 @@ _SCHEMA_SPECS = (
     _SchemaSpec("search.request", "search", "input", SearchRequest),
     _SchemaSpec("search.hit", "search", "output", SearchHit),
     _SchemaSpec("search.result", "search", "output", SearchResult),
+    _SchemaSpec("rpc.job_lookup", "rpc", "input", JobLookupRequest),
+    _SchemaSpec("rpc.job_list", "rpc", "input", JobListRequest),
+    _SchemaSpec(
+        "rpc.worker_event_subscription",
+        "rpc",
+        "input",
+        WorkerEventSubscription,
+    ),
+    _SchemaSpec("rpc.template_catalog", "rpc", "output", TemplateCatalog),
 )
 
 
@@ -307,6 +338,7 @@ def build_protocol_catalog(
     *,
     providers: tuple[ProviderCapabilities, ...] = (),
     templates: tuple[TemplateDescriptor, ...] = (),
+    services: tuple[RpcService, ...] | None = None,
     package_version: str | None = None,
 ) -> ProtocolCatalog:
     """Build a deterministic catalog from portable models and runtime metadata."""
@@ -316,6 +348,12 @@ def build_protocol_catalog(
         schemas=schemas,
         providers=tuple(sorted(providers, key=lambda item: item.name)),
         templates=tuple(sorted(templates, key=lambda item: item.ref.key)),
+        services=tuple(
+            sorted(
+                services if services is not None else (JOB_CONTROL_PLANE_SERVICE,),
+                key=lambda item: item.key,
+            )
+        ),
     )
 
 

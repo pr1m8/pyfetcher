@@ -109,6 +109,13 @@ def test_jobs_serve_help_does_not_require_starting_server():
     assert "--redis-url" in result.output
 
 
+def test_jobs_grpc_serve_help_does_not_require_starting_server():
+    result = CliRunner().invoke(cli, ["jobs", "grpc-serve", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "gRPC job control plane" in result.output
+    assert "--redis-url" in result.output
+
+
 async def test_job_application_can_own_redis_queue_and_store(tmp_path: Path):
     from pyfetcher.cli.app import _job_application
 
@@ -152,6 +159,15 @@ def test_contracts_list_json():
     assert "http.fetch_request@1" in contracts
     assert "acquisition.request@1" in contracts
     assert "job.request@1" in contracts
+    assert "rpc.job_lookup@1" in contracts
+
+
+def test_contracts_services_json():
+    result = CliRunner().invoke(cli, ["contracts", "services", "--output", "json"])
+    assert result.exit_code == 0, result.output
+    services = json.loads(result.output)
+    assert services[0]["name"] == "fetchkit.jobs.v1.JobControlPlane"
+    assert services[0]["methods"][-1]["cardinality"] == "server_stream"
 
 
 def test_contracts_export_split(tmp_path: Path):
@@ -164,6 +180,23 @@ def test_contracts_export_split(tmp_path: Path):
     assert "Exported" in result.output
     assert (destination / "manifest.json").is_file()
     assert (destination / "schemas" / "acquisition.request@1.schema.json").is_file()
+
+
+def test_contracts_export_typescript_and_proto(tmp_path: Path):
+    destination = tmp_path / "typescript"
+    result = CliRunner().invoke(
+        cli,
+        ["contracts", "export", str(destination), "--typescript"],
+    )
+    assert result.exit_code == 0, result.output
+    assert (destination / "types" / "job-request.v1.ts").is_file()
+    assert (destination / "rpc.ts").is_file()
+    assert (destination / "proto" / "fetchkit" / "jobs" / "v1" / "jobs.proto").is_file()
+
+    proto = tmp_path / "jobs.proto"
+    proto_result = CliRunner().invoke(cli, ["contracts", "proto", str(proto)])
+    assert proto_result.exit_code == 0, proto_result.output
+    assert "service JobControlPlane" in proto.read_text()
 
 
 def test_cli_version_uses_distribution_metadata():

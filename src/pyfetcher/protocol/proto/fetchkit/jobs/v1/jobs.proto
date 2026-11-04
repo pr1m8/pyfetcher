@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package fetchkit.jobs.v1;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/wrappers.proto";
+
+// JSON bodies use the versioned contract keys published by the fetchkit
+// protocol catalog. Protobuf supplies stable gRPC framing without duplicating
+// every Pydantic domain model in a second schema system.
+service JobControlPlane {
+  rpc Submit(google.protobuf.BytesValue) returns (google.protobuf.BytesValue);
+  rpc Get(google.protobuf.BytesValue) returns (google.protobuf.BytesValue);
+  rpc List(google.protobuf.BytesValue) returns (google.protobuf.BytesValue);
+  rpc Cancel(google.protobuf.BytesValue) returns (google.protobuf.BytesValue);
+  rpc Health(google.protobuf.Empty) returns (google.protobuf.BytesValue);
+  rpc Templates(google.protobuf.Empty) returns (google.protobuf.BytesValue);
+  rpc Worker(google.protobuf.Empty) returns (google.protobuf.BytesValue);
+  rpc WatchEvents(google.protobuf.BytesValue)
+      returns (stream google.protobuf.BytesValue);
+}

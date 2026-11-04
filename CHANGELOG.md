@@ -69,6 +69,9 @@ All notable changes to fetchkit are documented here. The project follows
   extraction, acquisition, media, artifacts, search, queues, and jobs, with
   provider/template discovery, SHA-256 drift checks, split TypeScript-friendly
   exports, and ``pyfetcher contracts`` CLI commands.
+- Protocol catalog v2 RPC service discovery, a packaged protobuf definition,
+  an optional lifecycle-owned gRPC job control plane with server-streaming
+  events, and generated strict TypeScript contract/client source bundles.
 
 ### Changed
 

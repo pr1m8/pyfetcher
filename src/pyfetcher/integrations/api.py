@@ -7,7 +7,6 @@ transport without duplicating queue and cancellation behavior.
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from uuid import UUID
@@ -29,36 +28,9 @@ from pyfetcher.jobs import (
     JobServiceHealth,
     JobSubmission,
     TemplateDescriptor,
-    WorkerEvent,
     WorkerSnapshot,
 )
-
-
-class WorkerEventBroker:
-    """Bounded in-process fan-out for Server-Sent Events clients."""
-
-    def __init__(self, *, subscriber_buffer: int = 100) -> None:
-        if subscriber_buffer < 1:
-            raise ValueError("subscriber_buffer must be at least 1")
-        self._subscriber_buffer = subscriber_buffer
-        self._subscribers: set[asyncio.Queue[WorkerEvent]] = set()
-
-    async def publish(self, event: WorkerEvent) -> None:
-        for queue in tuple(self._subscribers):
-            if queue.full():
-                queue.get_nowait()
-            queue.put_nowait(event)
-
-    async def subscribe(self, *, job_id: UUID | None = None) -> AsyncIterator[WorkerEvent]:
-        queue: asyncio.Queue[WorkerEvent] = asyncio.Queue(self._subscriber_buffer)
-        self._subscribers.add(queue)
-        try:
-            while True:
-                event = await queue.get()
-                if job_id is None or event.job_id == job_id:
-                    yield event
-        finally:
-            self._subscribers.discard(queue)
+from pyfetcher.jobs.events import WorkerEventBroker
 
 
 def create_job_api(

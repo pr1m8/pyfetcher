@@ -2,7 +2,7 @@
 
 Purpose:
     Separate queue delivery from queryable job state so workers, APIs, CLIs,
-    and future RPC adapters share one control-plane view.
+    and RPC adapters share one control-plane view.
 
 Design:
     A queue owns delivery and leases. A :class:`JobStore` owns status,

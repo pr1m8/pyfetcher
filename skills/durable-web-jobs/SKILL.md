@@ -61,9 +61,11 @@ FETCHKIT_REDIS_URL=redis://localhost:6379/0 pyfetcher jobs serve
 
 For a custom host, inject both ``RedisStreamJobQueue`` and ``RedisJobStore``
 into ``JobApplication.create``. Add adapters created with ``from_url`` to
-``owned_resources`` or close them in the host. Keep HTTP, CLI, and future RPC
+``owned_resources`` or close them in the host. Keep HTTP, CLI, and gRPC
 adapters thin by delegating submit, inspect, list, cancel, health, and template
-discovery to ``JobService``.
+discovery to ``JobService``. Use the protocol catalog and generated TypeScript
+bundle for cross-language clients; keep JSON Schema as the domain-contract
+source and protobuf as gRPC framing.
 
 The Redis store uses atomic record/index transitions. Preserve a common Redis
 Cluster hash tag if customizing its prefix, and make record retention an

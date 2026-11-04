@@ -146,11 +146,20 @@ from pyfetcher.media import (
 )
 from pyfetcher.middleware import AsyncMiddleware, SyncMiddleware
 from pyfetcher.protocol import (
+    JOB_CONTROL_PLANE_SERVICE,
     ContractSchema,
+    JobListRequest,
+    JobLookupRequest,
     ProtocolCatalog,
+    RpcMethod,
+    RpcService,
+    TemplateCatalog,
+    WorkerEventSubscription,
     build_protocol_catalog,
     discover_protocol_catalog,
+    export_grpc_proto,
     export_protocol_catalog,
+    export_typescript_protocol,
 )
 from pyfetcher.search import SearchHit, SearchRequest, SearchResult, SearchService
 from pyfetcher.streams import ByteStream
@@ -203,10 +212,19 @@ __all__ = [
     "AsyncMiddleware",
     "SyncMiddleware",
     "ContractSchema",
+    "JOB_CONTROL_PLANE_SERVICE",
+    "JobListRequest",
+    "JobLookupRequest",
     "ProtocolCatalog",
+    "RpcMethod",
+    "RpcService",
+    "TemplateCatalog",
+    "WorkerEventSubscription",
     "build_protocol_catalog",
     "discover_protocol_catalog",
+    "export_grpc_proto",
     "export_protocol_catalog",
+    "export_typescript_protocol",
     "AcquisitionCredentials",
     "AcquisitionEvent",
     "AcquisitionRequest",

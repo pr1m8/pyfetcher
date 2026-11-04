@@ -25,11 +25,28 @@ document per input:
 
    pyfetcher contracts export ./generated/fetchkit --split
 
-The split layout contains ``manifest.json`` and a ``schemas/`` directory. Each
+Generate a ready-to-compile TypeScript source bundle instead:
+
+.. code-block:: bash
+
+   pyfetcher contracts export ./generated/fetchkit-protocol --typescript
+
+The TypeScript bundle contains:
+
+* ``types/*.ts`` with one self-contained type module per contract revision;
+* ``runtime.ts`` with contract keys and a transport-neutral ``JsonRpcTransport``;
+* ``rpc.ts`` with service descriptors and a typed ``JobControlPlaneClient``;
+* ``schemas/`` and ``manifest.json`` for runtime validation and drift checks;
+* ``proto/fetchkit/jobs/v1/jobs.proto`` for standard gRPC generation; and
+* a strict ``tsconfig.json`` and private ``package.json`` suitable for a
+  workspace package or copied generated source.
+
+The split and TypeScript layouts contain ``manifest.json`` and a ``schemas/``
+directory. Each
 schema has a stable identifier such as ``acquisition.request@1`` or
 ``job.result@1``, a JSON Schema ``$id``, a role, and a SHA-256 checksum. The
 manifest also includes built-in provider capabilities, provider option schemas,
-and versioned job-template input schemas.
+versioned job-template input schemas, and RPC service/method bindings.
 
 Installed acquisition-provider entry points are intentionally excluded by
 default. Include them explicitly only in a trusted environment:
@@ -52,15 +69,48 @@ A predominantly TypeScript system can treat Python as the execution plane:
        PY -->|large bytes| BLOB["BlobStore"]
        BLOB -->|BlobRef / ArtifactRef| TS
 
-Run the exported schemas through the JSON-Schema-to-TypeScript or
-JSON-Schema-to-Zod generator selected by the TypeScript project. Generate the
-types in CI and fail on an unexpected checksum change. Do not edit generated
-types manually.
+Use the built-in ``--typescript`` output or run the split schemas through the
+JSON-Schema-to-TypeScript or JSON-Schema-to-Zod generator selected by the
+TypeScript project. Generate types in CI and fail on an unexpected checksum
+change. Do not edit generated types manually. Runtime validation remains the
+consumer's choice; the exported schemas can be loaded into Ajv or another
+Draft 2020-12 validator.
 
-The first durable transport should be ordinary JSON messages or HTTP plus
-Server-Sent Events for acquisition progress. Protobuf or gRPC can be layered on
-later if profiling shows that stronger code generation or binary framing is
-worth maintaining a second schema system.
+The generated ``JobControlPlaneClient`` depends on a small ``JsonRpcTransport``
+interface. Implement that interface over gRPC, HTTP, a test double, or another
+application transport without changing generated domain types.
+
+gRPC boundary
+-------------
+
+Install the optional adapter, inspect service bindings, and export the proto:
+
+.. code-block:: bash
+
+   python -m pip install 'fetchkit[grpc]'
+   pyfetcher contracts services
+   pyfetcher contracts proto ./generated/proto/jobs.proto
+   pyfetcher jobs grpc-serve --host 127.0.0.1 --port 50051
+
+The packaged ``fetchkit.jobs.v1.JobControlPlane`` service implements submit,
+get, list, cancel, health, template discovery, worker inspection, and a
+server-streaming worker-event method. Contract-bearing protobuf messages are
+``google.protobuf.BytesValue`` frames containing UTF-8 JSON. Methods without a
+request body use ``google.protobuf.Empty``. The catalog maps every RPC method
+to an exact ``name@version`` request and response contract, and the server sends
+the response key in ``fetchkit-response-contract`` initial metadata.
+
+This framing is deliberate: JSON Schema and Pydantic remain the domain-model
+source of truth while protobuf owns transport paths and streaming. TypeScript
+projects can compile the proto with Buf, protoc, Connect, or grpc-js tooling,
+then use the generated contract types to encode and validate JSON bodies.
+
+The CLI host is an insecure loopback development entry point by default. A
+production host should construct
+:class:`~pyfetcher.integrations.grpc.JobGrpcServer` with TLS credentials,
+authentication/authorization interceptors, message-size limits, and a durable
+Redis queue/store pair. Browser applications need gRPC-Web, Connect, or the
+bundled HTTP API rather than a direct native gRPC channel.
 
 What is portable
 ----------------
@@ -89,6 +139,9 @@ top-level ``protocol_version`` versions the manifest envelope, while
 ``package_version`` records which fetchkit build produced it. Checksums make
 schema drift visible even before a package is published.
 
+Protocol catalog version 2 adds RPC service discovery. Service descriptors
+bind method paths to contract revisions without changing those revisions.
+
 Python applications can assemble a custom catalog from their own provider and
 template registries:
 
@@ -106,9 +159,9 @@ template registries:
 RPC safety boundary
 -------------------
 
-The catalog is a contract export, not a remotely accessible fetch service.
-Any future HTTP, WebSocket, or RPC gateway must add authentication,
-authorization, egress and private-network controls, URL validation, request and
-response size limits, quotas, cancellation, audit logging, and secret
-resolution. Keep those policies outside provider implementations so CLI,
-workers, and APIs can enforce different trust models over the same contracts.
+The HTTP and gRPC adapters are transport surfaces, not authorization systems.
+Deployments must add authentication, authorization, egress and private-network
+controls, URL validation, request and response size limits, quotas,
+cancellation, audit logging, and secret resolution. Keep those policies
+outside provider implementations so CLI, workers, and APIs can enforce
+different trust models over the same contracts.

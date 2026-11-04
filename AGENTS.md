@@ -47,8 +47,8 @@ documentation page, example, and tests before making a change.
   handling, inspection, and processing.
 - `src/pyfetcher/artifacts/`, `jobs/`, `integrations/`, `telemetry.py`: blob
   references, serializable job contracts, runtimes, queues, and observability.
-- `src/pyfetcher/protocol/`: versioned JSON Schema catalogs for TypeScript,
-  queues, provider/template discovery, and future API or RPC boundaries.
+- `src/pyfetcher/protocol/`: versioned JSON Schema catalogs, RPC service
+  discovery, protobuf framing, and generated TypeScript contract bundles.
 - `src/pyfetcher/crawler/`, `pipeline/`, `search.py`: discovery, crawl policy,
   reusable stages, and search orchestration.
 - `src/pyfetcher/mcp/`, `cli/`, `tui/`: user and agent-facing entry points.
@@ -83,6 +83,9 @@ documentation page, example, and tests before making a change.
    Scrapy, acquisition providers, media records, jobs, and artifacts.
 10. Do not claim exactly-once delivery. Design Redis/worker paths for retries
     and idempotency; keep Temporal workflow code deterministic.
+11. Keep JSON Schema as the source of truth for portable domain contracts.
+    Protobuf supplies gRPC framing and service paths; generated TypeScript
+    types and clients must retain the catalog's contract keys and checksums.
 
 ## Durable job integration checklist
 
@@ -105,7 +108,7 @@ documentation page, example, and tests before making a change.
 - Make adapter ownership explicit. Either add injected queues, stores, clients,
   and providers to `JobApplication.owned_resources` or close them in the host;
   never rely on interpreter shutdown.
-- Keep HTTP, CLI, and future RPC adapters thin: validate transport input, then
+- Keep HTTP, CLI, and gRPC adapters thin: validate transport input, then
   delegate to `JobService` and its versioned Pydantic contracts. Do not create
   transport-specific execution or status models.
 - Test durable changes offline for concurrent idempotent submission, retry and
@@ -161,7 +164,6 @@ deletes local infrastructure volumes. Do not run either accidentally.
   Do not add repository tokens or long-lived package credentials.
 - Never place passwords, cookies, access tokens, or credential file contents
   in source, fixtures, logs, examples, serialized jobs, or provider options.
-- RPC APIs, full GUI management, and stronger distributed control-plane
-  features are future directions unless the current code and docs demonstrate
-  them. Clearly label planned capabilities instead of documenting them as
-  implemented.
+- Full GUI management and stronger distributed control-plane features are
+  future directions unless the current code and docs demonstrate them. Clearly
+  label planned capabilities instead of documenting them as implemented.
